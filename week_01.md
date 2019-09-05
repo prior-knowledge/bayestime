@@ -26,7 +26,7 @@
 
 #### By constructing a small world
 
-The infinity of the Big World is too large to be useful. Instead we first consider a subset of possible data generating processes which we call the “Small World”, or $\Theta$. The Small World corresponds to a single probability model framework; in our height example we might suppose that $H \sim N(\mu, \sigma)$, where $\mu$ is the mean height, and $\sigma$ is their standard deviation. By varying our parameters $\theta = (\mu, \sigma)$ we get different data generating processes. The collection of probability distributions we get by varying $\theta \elem \Theta$ in the Small World is known as the Likelihood.
+The infinity of the Big World is too large to be useful. Instead we first consider a subset of possible data generating processes which we call the “Small World”, or $$\Theta$$. The Small World corresponds to a single probability model framework; in our height example we might suppose that $$H \sim N(\mu, \sigma)$$, where $\mu$ is the mean height, and $\sigma$ is their standard deviation. By varying our parameters $\theta = (\mu, \sigma)$ we get different data generating processes. The collection of probability distributions we get by varying $\theta \elem \Theta$ in the Small World is known as the Likelihood.
 
 #### Prior
 The Small World is still too big for our purposes. We usually have some knowledge about which areas of the
