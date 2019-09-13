@@ -28,7 +28,7 @@ A list of topics for an 8 week course on Bayesian statistics that takes you from
 1. Understand the basic theory and motivation of Bayesian inference.
 2. Know how to critically assess a statistical model.
 3. Appreciate why we often need to use sampling in Bayesian inference.
-4. Grasp how modern MCMC algorithms work intuitively and how to implement these in practice.
+4. Grasp how modern MCMC algorithms work intuitively and how to recognize when they fail.
 5. Know how to code up most models in Stan.
 6. Recognize the benefits of multilevel models and how these can be used to provide robust inferences.
 
@@ -39,11 +39,14 @@ A list of topics for an 8 week course on Bayesian statistics that takes you from
 4. Bayes rule is the only method to invert the probability of the data given a hypothesis that is consistent with the logic of probability.
 
 
-### Informed interactions with data
+## Week 0, introductions
 
->  Blind allegiance to theory or unequivocal adherence to data will not deliver useful knowledge. Optimal gains in knowledge can only occur when we engage in an informed dialogue with data
->  Todd D. Little
+### Knowledge goals
+1. Intuition of reasoning under uncertainty.
+2. Basic definitions of all the pieces of inference.
 
+### Computational goals
+1. None
 
 
 ## Week 1, the theory of inference
