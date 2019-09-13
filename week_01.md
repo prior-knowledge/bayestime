@@ -10,30 +10,10 @@
 2. Lambert's _Lecture 1_ slides.
 3. **Bonus** Video lecture on the [_Bayes' Rule: The Theory That Would Not Die_](https://youtu.be/2o-_BGqYM5U) by Sharon McGrayne, first 45 minutes of the video.
 
-### Setting the Stage
 
-#### Big World
-* Consider an observable characteristic we are trying to explain, for example the heights of 5 randomly chosen individuals.
-* Assume that there exists a true process $T$ that generates the heights of all individuals in our sample.
-* There is variability in the observables outputted by $T$; this can either be **ontological**, due to the inherent variability of the system, or **epistemological**, for example, because we lack knowledge of the genetics and environmental factors that affect growth.
-* Imagine a set of all conceivable processes that could result in our sample of height observations, which we call the “Big World”.
 
-#### How can we reason about the big world?
 
-**Motivation**: we want to update our knowledge of $T$ in light of data, and use the updated knowledge to estimate quantities of interest. In our height example we might want to estimate the mean height of the entire population having witnessed our sample of 5 individuals.
 
-**How to update our knowledge?**: Find areas of the Big World that are closest to T; ideally we would find T itself! Then estimate quantities of interest using these subsets of the Small World.
-
-#### By constructing a small world
-
-The infinity of the Big World is too large to be useful. Instead we first consider a subset of possible data generating processes which we call the “Small World”, or $$\Theta$$. The Small World corresponds to a single probability model framework; in our height example we might suppose that $$H \sim N(\mu, \sigma)$$, where $\mu$ is the mean height, and $\sigma$ is their standard deviation. By varying our parameters $\theta = (\mu, \sigma)$ we get different data generating processes. The collection of probability distributions we get by varying $\theta \elem \Theta$ in the Small World is known as the Likelihood.
-
-#### Prior
-The Small World is still too big for our purposes. We usually have some knowledge about which areas of the
-Small World are nearest to T . For example we don’t believe that μ = 100m and μ = 1.5m are equally probable. As such, in Bayesian inference we define a prior probability density that gives a weighting to all θ ∈ Θ reflecting our beliefs. Frequentist inference does not require us to specify a prior.
-
-#### Data
-Inference is the process of updating our prior knowledge in light of data. In Bayesian inference with a likelihood and our prior knowledge explicitly stated we use Bayes’ rule to find our posterior probability density over θ ∈ Θ. The lack of a prior means that in Frequentist inference we generate posterior weightings approximately using rules of thumb.
 
 ### A first take on the steps of Bayesian inference
 Watch Lambert's YouTube lecture on [the intuition of Bayes' rule](https://youtu.be/yvWlpwnT1nw), 8 minutes.
@@ -57,6 +37,13 @@ An aside: [how to survive a falling lift](https://www.npr.org/sections/krulwich/
 By specifying a model framework X ∼ Poisson(θ) we defined the boundaries of the “Small World”. The Small World contains a collection of probability distributions known as the Likelihood.
 
 Assume we find that the lift broke down 8 times in the past year. Our likelihood gives us an infinite number of possible ways in which this could have come about. Each of these ways corresponds to a unique value of θ.
+
+If expected number of failures is 10, and it costs $1000 per repair visit. Suppose we budget $10,000 for lift repairs. What's the probability that we will face a bill 50% greater? 100% greater? If we can upgrade the lift such that the rate of failures will be reduced to 5 per year and it costs $20,000. Will it be worth it to implement this upgrade?
+
+If you sign a service contract with the repair company, you can purchase as many as you want for $1000 per visit. If not, a repair visit costs $1500. How many visits should you prepay? Write a paragraph justifying to your boss why you chose this number and how many times
+
+
+
 
 We know that any of these models, each corresponding to different values of θ, could generate the data.
 In inference we want to use our prior knowledge and data to help us choose which of these models make most sense. Essentially we want to run the process in reverse.
