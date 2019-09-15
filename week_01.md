@@ -11,46 +11,32 @@
 3. **Bonus** Video lecture on the [_Bayes' Rule: The Theory That Would Not Die_](https://youtu.be/2o-_BGqYM5U) by Sharon McGrayne, first 45 minutes of the video.
 
 
-
-
-
-
 ### A first take on the steps of Bayesian inference
 Watch Lambert's YouTube lecture on [the intuition of Bayes' rule](https://youtu.be/yvWlpwnT1nw), 8 minutes.
+
+
+
+
 
 1. Define the observables, ie the Big World, ie [Big Sky](https://youtu.be/zOusKPeH7nU) by the Kinks.
 2. Specify a likelihood.
 3. Specify a prior.
 4. Input the data.
 
-#### Example, frequency of lift malfunctioning
-_Material: slides 130 to 233 of Lecture 1_
 
-Imagine we want to create a model for the frequency a lift (elevator) breaks down in a given year, X . This model will be used to plan expenditure on lift repairs over the following few years.
+## Purpose of Statistical inference
+Some questions we want to answer:
+1. How much will a student earn after receiving an MBA?
+2. Will the Democrats win the next US Presidential election?
+3. Did the casino give me weighted dice to play craps?
 
-An aside: [how to survive a falling lift](https://www.npr.org/sections/krulwich/2010/09/17/129934849/how-to-survive-when-your-elevator-plunges)
+To answer these questions, we develop theories, gather data, then test the theory. It is difficult to test those theories because we have uncertainty about how the world works (epistemological) and there are many factors outside of our control that introduce noise (ontological).
+> It is like trying to listen to a classical orchestra which is playing on the side of a busy street, while we fly overhead in a plane
 
-1. Assume a range of unpredictable and uncorrelated factors (temperature, lift usage, etc.) affect the functioning of the lift, so we say X ∼ Poisson(θ), where θ is the mean number of times the lift breaks in one year.
-2. By specifying that X is Poisson-distributed we define the boundaries of the Small World.
-3. _Important_: we don’t a priori know the true value of θ therefore our model defines collection of probability models; one for each value of θ. We call this collection of models the Likelihood.
+From _Student's Guide_ page 17
+> Statistical inference is the logical framework which we can use to test our beliefs about the noisy world against data. We formalize our beliefs in models of probability.
 
-By specifying a model framework X ∼ Poisson(θ) we defined the boundaries of the “Small World”. The Small World contains a collection of probability distributions known as the Likelihood.
-
-Assume we find that the lift broke down 8 times in the past year. Our likelihood gives us an infinite number of possible ways in which this could have come about. Each of these ways corresponds to a unique value of θ.
-
-If expected number of failures is 10, and it costs $1000 per repair visit. Suppose we budget $10,000 for lift repairs. What's the probability that we will face a bill 50% greater? 100% greater? If we can upgrade the lift such that the rate of failures will be reduced to 5 per year and it costs $20,000. Will it be worth it to implement this upgrade?
-
-If you sign a service contract with the repair company, you can purchase as many as you want for $1000 per visit. If not, a repair visit costs $1500. How many visits should you prepay? Write a paragraph justifying to your boss why you chose this number and how many times
-
-
-
-
-We know that any of these models, each corresponding to different values of θ, could generate the data.
-In inference we want to use our prior knowledge and data to help us choose which of these models make most sense. Essentially we want to run the process in reverse.
-
-Both Frequentists and Bayesians essentially invert: p(X |θ) → p(θ|X ). This amounts to going from an ’effect’ back to a ’cause’. Their methods of inversion are different.
-
-### Different Worlds More Formally
+There are two schools of thought for inference: Bayesian versus frequentist.
 
 #### Statistical Inference, Bayesian versus Frequentist worlds
 _Material: Sections 2.3, 2.4, 2.5, 2.6, 2.7 of Students' Guide_
@@ -104,21 +90,35 @@ _Material:_
 
 
 
+# Lab
 
+## Central limit theorem
+Simulate samples from various probability distributions and compute the mean. Does the distribution of the mean approximate a normal distribution as you increase the number of experiments you conduct?
 
-#### Aside on ontonology and epistemology
-From [Clément Renaud, intermittent hack philosopher](https://www.quora.com/What-is-the-difference-between-ontology-and-epistemology):
-> Ontology and epistemology are both important elements of the philosophy of knowledge. If they often overlap, they have clear distinction : epistemology is about the way we know things when ontology is about what things are.
->
-> Epistemology is a field of science that tends to describe the many approaches we can chose to understand our world. It is by definition the science of knowledge and consequently is often understood as a meta-science : the science of defining what is the "scientific way". Mostly, it studies the fundamental choices or givens you take into account when you attempt to know something.
->
->For example, cybernetics use the model of a system as an epistemological approach to explain facts and phenomenons. Derived from it, science today use widely the network model as a premise to understand various things, for instance cities. When we say: "Ok, let's try to understand the structure of modern cities as a network" this is epistemology in practice - to chose a bias.
->
->Then start the ontological debate : "But modern cities are actually structured as networks !" Now that is it : we are all set up for a boring egg and chicken debate, one saying : "It is like this" and the other saying "It is just because you look at it that way". This happens all the time.
->
->Ontology is about describing things and their relationships to answer the question "What is it?" while epistemology's personal concern is to investigate the ways that leads you to think that.
->
->Imagine the ontology saying "This is that", then the epistemology will answer : "How can you be so sure of what it is if you don't even know how you know it?"
->
->Let's take a famous quote from Wittgenstein's Tractatus Logico-Philosophicus : "The world is the totality of facts, not of things" .This is an ontological assertion - it challenges the nature of the world (what it is) - then it leads us to an epistemological consideration - to reconsider how we have looked at the world before.
->
+## Intuition of Bayesian reasoning with coin flips
+Work through various coin flipping scenarios to see how Bayesian updates compare with your intuition.
+
+## Decisions about elevators
+_Material: slides 130 to 233 of Lecture 1_
+
+Imagine we want to create a model for the frequency a lift (elevator) breaks down in a given year, X . This model will be used to plan expenditure on lift repairs over the following few years.
+
+An aside: [how to survive a falling lift](https://www.npr.org/sections/krulwich/2010/09/17/129934849/how-to-survive-when-your-elevator-plunges)
+
+1. Assume a range of unpredictable and uncorrelated factors (temperature, lift usage, etc.) affect the functioning of the lift, so we say X ∼ Poisson(θ), where θ is the mean number of times the lift breaks in one year.
+2. By specifying that X is Poisson-distributed we assume that there is a continuous probability of failure over time.
+3. _Important_: we don’t a priori know the true value of θ therefore our model defines collection of probability models; one for each value of θ. We call this collection of models the Likelihood.
+
+By specifying a model framework X ∼ Poisson(θ) we defined the boundaries of the “Small World”. The Small World contains a collection of probability distributions known as the Likelihood.
+
+### First question
+Compute the posterior of the average number of failures per year given the data for the last 10 years. Compute the 90 percent credible interval. (```np.quantile```)
+
+### Second question
+Using the posterior you computed in the first question, it costs $1000 per repair visit, and we budget $10,000 a year for lift repairs. Over the next 5 years, how many times do we expect to face a repair bill of $15,000 or greater?
+
+### Third question
+Suppose you can sign a service contract with an elevator repair company. You can pre-pay for as many repairs in a year as you want for $1000 per repair visit. If the repair is not prepaid, a repair visit costs $1500. How many visits should you prepay? Write a paragraph justifying to your boss why you chose this number and a prediction for the number of times in the next 5 years you expect to exceed the prepaid budget.
+
+### Challenge problem
+Suppose you have 4 friends in other buildings who face the same problem as you, and you are able to collectively buy a service contract. Compute the combined Poisson parameter and its credible interval. Would you save money over the next 5 years if you collectively bought a contract?
