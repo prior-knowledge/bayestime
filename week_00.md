@@ -75,21 +75,78 @@ What's the probability of drawing a single pair in 5-card poker hand? There are 
 What's the probability of drawing a full house, ie 2 of a kind and 3 of a kind? ((13 choose 1)* (4 choose 3) * (12 choose 1) * (4 choose 2)) / (52 choose 5) = 0.00144
 
 ## A more useful definition of probability
-A probability space consists of a sample space, S; a set of events; and a probability function, P which takes an event, A (which is a subset of S), as input and returns P(A), a real number between 0 and 1. The function P must satisfy these two properties:
+A probability space consists of a sample space, S; a set of events, E; and a probability function, P, which takes an event, A (which is a subset of S), as input and returns P(A), a real number between 0 and 1. The function P must satisfy these two properties:
 1. P(empty set) = 0, P(S) = 1
-2. If A_1, A_2, .... are disjoint events, then P(union of the A's) equals the sum of the probabilities of each A.
+2. If A_1, A_2, ... are disjoint events, then P(union of the A's) equals the sum of the probabilities of each A.
 
 ### Some properties of probability
 1. P(A^c) = 1 - P(A)
 2. If A is a subset of B, then P(A) <= P(B)
 3. P(A or B) = P(A) + P(B) - P(A and B)
 
+### Events and Probabilities
+| Events             | Numbers                               |
+| ------------------ |--------------------------------------:|
+| A                  | P(A)                                  |
+| not A              | P(A^c) = 1 - P(A)                     |
+| A and B            | P(A intersect B)                      |
+| A or B             | P(A or B) = P(A) + P(B) - P(A and B)  |
+| something happened | P(S) = 1                              |
 
-## End of new material
-** Will be updating the remainder...want to get to conditional probability in week 0.**
+## Thinking conditionally
+Probability is the mathematical language of uncertainty that provides a measure or yardstick of uncertainty. When we observe new evidence, how do we update our degree of uncertainty? Conditional probability is a concept that allows us to perform this update in a logical and coherent way.
+
+### Examples galor
+All of these settings involve thinking conditionally:
+1. You wake up in the morning and see clouds. How does that change your belief that it will rain in the next hour?
+2. The US Women's soccer team scores a goal in the first 10 minutes. How does this change the probability that they will win the game?
+3. US manufacturing decreases by one percent in the last quarter, how does this change the probability of an economic recession in the next four quarters?
+4. A witness testifies in a murder trial, how does this alter your belief in the innocence of the defendant?
+5. Literally every detective show ever. Cop finds a new piece of evidence, do they pursue a new suspect?
+
+## Fixing an example to introduce formality
+We will return to our previous example concerning whether your commute into the office will take less than 20 minutes and define a set of events formally.
+
+Here are events related to your commute:
+| Variable   | Event                                     |
+| ---------- |------------------------------------------:|
+| D          | Your commute takes less than 20 minutes   |
+| A          | The light at Elm street is green          |
+| B          | Google maps shows your route is green     |
+| C          | Construction crew picks up on time        |
+
+And their corresponding probabilities
+| Probability  |
+| ------------ |
+| P(D)         |
+| P(A)         |
+| P(B)         |
+| P(C)         |
+
+Suppose we're stopped at a light. We glance at Google maps, and it shows our route is green. How does this change our assessment of P(D)? In the language of probability we say, what is the probability of D conditional on B. We write this as P(D|B). When we go from P(D) to P(D|B) we say we are "conditioning on B". Now suppose the light at Elm is green. We can condition D on A and B, P(D|A,B). Throughout our commute we can update our belief that D will occur given that we observe other events.
+
+Formally we define P(D|B) = P(D and B) / P(B).
+
+### Example, pebble world
+Going back to a world in which we can count things. Suppose we have a space of 9 pebbles. The event A includes 5 pebbles, the event B includes 4. A and B overlap on 1 pebble. Suppose we know B happened, what is the probability that A occurs?
+
+### Example, playing cards
+We shuffle a standard deck and draw 2 cards. A is the event that the first card is a heart, B is the event that the second card is red. What is P(A|B)?
+
+First was is P(A and B)? There are 13 ways to get a heart, and there are 25 ways to get a red card after we draw a heart. So, P(A and B) = (13 / 52) * (25 / 51) = 25 / 204
+
+Next, what is P(B)? Without knowing _anything_ about the first card, the probability that the second card is red is 26 / 52 or 1 / 2.
+
+Putting these together: P(A|B) = P(A and B) / P(B) = (25/204) / (1/2) = 25/102
+
+### Theorem
+
+### Bayes' Rule
+
+### The law of total probability
 
 
-Probability is the mathematical language of uncertainty that provides a measure or yardstick of uncertainty. Probabilities are numerical quantities, defined over a set of outcomes, are nonnegative, additive over mutually exclusive outcomes, and sum to 1 over all possible mutually exclusive outcomes.
+## Old material below, will update and incorporate
 
 
 ## Interpretations of Probability
