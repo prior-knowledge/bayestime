@@ -1,6 +1,6 @@
 ---
 title: 'Week 1 lab: Coin Flips'
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
@@ -75,7 +75,11 @@ model {
 "
 ```
 
-Now compile this into a model. It may take a minute or two: <span style="color:red">(I don't think we do this part in R)</span>
+Now compile this into a model. It may take a minute or two: <span style="color:red">double check this. do we need to use stanc_ret=stanc(model_code=model_code</span>
+
+```{r, results="hide"}
+model <- stan_model(model_code=model_code)
+```
 
 ### Data
 
@@ -93,7 +97,7 @@ Different cases to try:
 ```{r}
 data <- list(
     N=1,
-    y=0
+    y=array(0,dim=1)
 )
 ```
 
@@ -103,8 +107,11 @@ Remember that our goal in Bayesian inference is to compute a posterior distribut
 
 $P(\theta|x)=\frac{P(x|\theta)P(\theta)}{P(x)}$
 
-For a Beta-Bernoulli model we could compute this directly- but for more interesting models the $P(x)$ will be hard (impossible) to solve. So instead we'll use a technique called Markov chain Monte Carlo to samples from $P(\theta|x)$ without computing it directly; we can use these samples to estimate whatever values we need to compute.
+For a Beta-Bernoulli model we could compute this directly- but for more interesting models the $P(x)$ will be hard (impossible) to solve. So instead we'll use a technique called *Markov chain Monte Carlo* to samples from $P(\theta|x)$ without computing it directly; we can use these samples to estimate whatever values we need to compute.
 
+```{r}
+fit <- sampling(object=model, data=data, iter=10000,chains=4, show_messages=FALSE)
+```
 
 
 
@@ -112,5 +119,6 @@ For a Beta-Bernoulli model we could compute this directly- but for more interest
 
 ```{r, eval=FALSE}
 #model = pystan.StanModel(model_code=model_code)
+# this seems to be the way most people use stan in R. Just one step, not split into compile and sample
 model <- stan(model_code=model_code, data=data,iter=1000,chains=2)
 ```
