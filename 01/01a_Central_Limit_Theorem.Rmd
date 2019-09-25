@@ -1,6 +1,6 @@
 ---
 title: 'Week 1 lab: Central Limit Theorem'
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
