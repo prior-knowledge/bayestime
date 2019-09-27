@@ -1,14 +1,14 @@
 ---
 title: 'Week 1 lab: Coin Flips'
-output: github_document
+output: 
+    github_document:
+        pandoc_args: --webtex
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message=FALSE)
 output_options = c("self_contained = TRUE")
 ```
-
-<span style="color:red">Red things are python that still need to be converted to R</span>
 
 ## Goals
 
@@ -47,16 +47,16 @@ ggplot(x, aes(x=x)) + geom_histogram(bins=50)
 
 * define a model in Stan's syntax as a string  
 * compile with rstan into a model object  
-* run inference on a dictionary of data (in this case, coin flips) by calling <span style="color:red">model.fit()</span>  
-* pull samples from the `fit` object using <span style="color:red">fit.extract()["theta"]</span>; these are samples from the posterior $P(\theta|data)$.
+* run inference on a dictionary of data (in this case, coin flips) by calling `sampling`.  
+* pull samples from the `fit` object using `extract(fit)$theta`; these are samples from the posterior $P(\theta|data)$.
 
 ### Define the model
 
 Prior:  
-$\theta~beta(a,b)$  
+$\theta \sim beta(a,b)$  
 
 Likelihood:  
-$y~Bernoulli(\theta)$
+$y \sim Bernoulli(\theta)$
 
 ```{r}
 model_code = "
@@ -75,7 +75,7 @@ model {
 "
 ```
 
-Now compile this into a model. It may take a minute or two: <span style="color:red">double check this. do we need to use stanc_ret=stanc(model_code=model_code</span>
+Now compile this into a model. It may take a minute or two:
 
 ```{r, results="hide"}
 model <- stan_model(model_code=model_code)
@@ -83,21 +83,23 @@ model <- stan_model(model_code=model_code)
 
 ### Data
 
-For this thought experiment we'll just make up data. The data gets stored in a dictionary with an entry for each variable:
+For this thought experiment we'll just make up data. The data gets stored in a list with an entry for each variable:
 
 * N the number of samples  
 * y a list of sample values, each 0 or 1.
 
 Different cases to try:  
-```data = {"N":1, "y":[0]}``` # 1 sample, tails  
-```data = {"N":10, "y":[0,1,0,1,0,1,0,1,0,1]}``` # 5 heads 5 tails  
-```data = {"N":5, "y":[1,1,1,1,1]}``` # 5 heads in a row  
+```data <- list(N=1, y=array(0,dim=1))``` # 1 sample, tails. Note the difference in y here compared to the others  
+```data <- list(N=10, y=c(0,1,0,1,0,1,0,1,0,1))``` # 5 heads 5 tails  
+```data <- list(N=5, y=c(1,1,1,1,1))``` # 5 heads in a row  
 
 
 ```{r}
 data <- list(
     N=1,
     y=array(0,dim=1)
+    #N=10,
+    #y=c(0,1,0,1,0,1,0,1,0,1)
 )
 ```
 
@@ -109,16 +111,16 @@ $P(\theta|x)=\frac{P(x|\theta)P(\theta)}{P(x)}$
 
 For a Beta-Bernoulli model we could compute this directly- but for more interesting models the $P(x)$ will be hard (impossible) to solve. So instead we'll use a technique called *Markov chain Monte Carlo* to samples from $P(\theta|x)$ without computing it directly; we can use these samples to estimate whatever values we need to compute.
 
-```{r}
+```{r, results='hide'}
 fit <- sampling(object=model, data=data, iter=10000,chains=4, show_messages=FALSE)
 ```
 
+Calling `extract(fit)$theta` will give an array of samples; since this is a one-dimensional problem, we can just visualize it with a histogram:
 
-
-***
-
-```{r, eval=FALSE}
-#model = pystan.StanModel(model_code=model_code)
-# this seems to be the way most people use stan in R. Just one step, not split into compile and sample
-model <- stan(model_code=model_code, data=data,iter=1000,chains=2)
+```{r}
+samples <- data.frame('theta'=extract(fit)$theta)
+ggplot(samples, aes(x=theta)) + geom_histogram(bins=50) + labs(title='Samples from posterior')
 ```
+
+
+*Note: results are hidden for stan_model and sampling - otherwise there is a ton of output*
