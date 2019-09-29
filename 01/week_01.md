@@ -1,4 +1,5 @@
-# Week 1, the theory of inference
+# Week 1
+# _Theory of Inference_
 
 ### Goals of week 1:
 1. Understand the motivation behind inference.

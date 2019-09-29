@@ -1,4 +1,5 @@
-# Week 0, Introductions
+# Week 0
+# _Building Blocks of Probability_
 
 ### Goals of week 0:
 1. Develop understanding of the building blocks of probability.

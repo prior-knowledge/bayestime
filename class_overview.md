@@ -1,6 +1,8 @@
-# A class on Bayesian Statistics using Stan
+# An introduction to Bayesian statistical computing using Stan
 
-A list of topics for an 8 week course on Bayesian statistics that takes you from understanding probability to multilevel modeling in Stan. The main reference is _A Student's Guide to Bayesian Statistics_ by Ben Lambert. Below are links to additional book and course references, including links to freely available lectures on YouTube.
+This course provides an 8-week journey from the basics of probability to being proficient in a modern Bayesian statistical workflow. Throughout the course students will complete cycles of the workflow, successively learning more about the bits and pieces. Lectures provide the intuition and theory underpinning a part of the process, and computer labs provide the opportunity to apply this newly acquired knowledge in a series of experiments and challenges.
+
+The main reference is _A Student's Guide to Bayesian Statistics_ by Ben Lambert. Below are links to additional book and course references, including links to freely available lectures on YouTube.
 
 ## Bayesian book references:
 1. _A Student's Guide to Bayesian Statistics_ by Ben Lambert. [Video Lectures](https://www.youtube.com/playlist?list=PLwJRxp3blEvZ8AKMXOy0fc0cqT61GsKCG) and [book website](https://ben-lambert.com/a-students-guide-to-bayesian-statistics/)
