@@ -1,0 +1,242 @@
+---
+title: "Week 1 lab: Elevator Repair"
+output: 
+    github_document:
+        pandoc_args: --webtex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE)
+```
+
+<span style="color:red">Red things are python that still need to be converted to R</span>
+
+## Goals
+
+* Build a simple model based on synthetic count data: number of elevator failures per year in a building  
+* Run inference in the model, and make decisions using posterior predictions
+
+## The plan
+
+* load synthetic data: number of elevator failures per year for your building and three nearby buildings  
+* model data as a Poisson-distributed variable, using a Gamma distribution as a prior over the Poisson intensity  
+* use posterior predictions about your model to ___
+
+```{r}
+library(rstan)
+library(ggplot2)
+
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write=TRUE)
+```
+
+### Load the data
+
+```{r}
+failures <- read.csv('elevator_failures.csv')
+failures
+```
+
+### Build the model 
+
+Let's assume that the elevator failures happen at a constant probability per time of happening and are uncorrelated with each other- so they'll be described reasonbly well by a homogeneous Poisson process.
+
+The Poisson likelihood has one parameter ($\lambda$) that is equal to both the mean and the standard deviation of the distribution. $\lambda$ has to be nonnegative but doesn't have an upper bound, so we'll use a Gamma distribution.
+
+Prior:
+
+$\lambda \sim gamma(a,b)$
+
+Likelihood:
+
+$y \sim Poisson(\lambda)$
+
+**Note:** <span style="color:red">rgamma uses (shape, scale) to parameterize Gamma distribution; stan uses (alpha, beta) where alpha=shape and beta=1/scale.</span> Example samples from a Gamma distribution:
+
+```{r, plot-prior}
+a <- 2
+b <- 2
+prior_samples <- rgamma(n=1000,shape=a,scale=b)
+hist(prior_samples,100)
+```
+
+Now build the stan model:
+
+```{r}
+model_code = "
+data {
+    int<lower=0> N;
+    int<lower=0> y[N];
+}
+parameters {
+    real<lower=0> lam;
+}
+model {
+    lam ~ gamma(2,0.5); // SPECIFY YOUR PRIOR HYPERPARAMETERS HERE
+    y ~ poisson(lam);
+}
+"
+```
+
+```{r, results="hide"}
+model <- stan_model(model_code=model_code)
+```
+
+### Draw samples from the posterior
+
+Run inference on the data from your building.
+
+```{r}
+data <- list(
+    N=nrow(failures),
+    y=failures$you
+)
+```
+
+```{r, results='hide'}
+fit <- sampling(object=model, data=data, iter=10000,chains=4)
+fit
+```
+
+```{r}
+posterior_samples <- extract(fit)$lam
+dim(posterior_samples)
+```
+
+```{r, plot-posterior}
+# creating a dataframe to nicely use ggplot
+prior_post <- data.frame('sample'=c(rep('prior',length(prior_samples)),rep('posterior',length(posterior_samples))),
+                         'value'=c(prior_samples,posterior_samples))
+g <- ggplot(prior_post, aes(x=value,stat(density),fill=sample))
+g + geom_histogram(bins=100, position='identity',alpha=0.7) + 
+    theme(legend.justification=c(1,1), legend.position=c(1,1), legend.title=element_blank())
+```
+
+### Find the mean and 90% credible interval of the average number of failures per year¶
+
+```{r}
+mean(posterior_samples)
+```
+
+```{r}
+paste("95 percent:", quantile(posterior_samples,0.95))
+paste("5 percent:", quantile(posterior_samples, 0.05))
+```
+
+
+### Challenge: use your model to make an actual decision
+
+Let's say that the elevator company sells service contracts for repairing broken elevators:
+
+* You can prepay for $N$ service visits per year, at a cost of $N \times \$1000$ (whether or not you use them all)
+* Non-prepaid service visits cost \$1500
+
+**Use your model to predict the value of $N$ that will minimize expected cost**
+
+Suggested approach: write a function that inputs the number of prepaid visits and the number of failures for a given year, and outputs the total cost.
+
+```{r}
+cost_function <- function(num_failures,n){
+    # REMOVE CODE FOR LAB
+    if (num_failures <= n) {
+        cost <- n*1000
+    } else {
+        cost <- (n*1000 + (num_failures-n)*1500)
+    }
+    return(cost)
+}
+```
+
+```{r}
+cost_function_returns_correct_values <- function(){
+    print(cost_function(0,1) == 1000)
+    print(cost_function(1,1) == 1000)
+    print(cost_function(3,2) == 3500)
+}
+```
+
+The posterior samples we drew are values of $\lambda$, but we need actual failure counts for our cost function. For any $\lambda_{i} \sim P(\lambda |x)$, we can draw a failure count $y_{i} \sim Poisson(\lambda_{i})$ (that is, sampling from the "posterior predictive distribution").
+
+We can use these samples with our cost function to estimate the expected cost of different choices for $N$ (you can do this brute-force style with a for loop or two; it doesn't have to be pretty).
+
+<span style="color:red">Remove code for lab.</span>
+
+```{r}
+expected_costs <- data.frame('cost'=as.numeric())
+for (i in 1:10) {
+    pois_draws <- sapply(posterior_samples, function(x) rpois(1,x))
+    expectation_value <- mean(sapply(pois_draws, function(x) cost_function(x,i)))
+    expected_costs[i,1] <- expectation_value
+}
+```
+
+We then look for a minimum in our expected costs.
+
+```{r, plot-expected-costs}
+g <- ggplot(expected_costs, aes(x=1:10,y=cost))
+g + geom_line() + geom_point()
+```
+
+### Challenge: reuse your analysis to answer a harder question
+
+Our original dataset contained the historical counts of elevator failures in your building, as well as buildings where three of your friends work. Could you save money if the four of you combined forces with a single shared service plan, or are you better off with four separate plans?
+
+<span style="color:red">Delete code for this entire section of the lab.</span>
+
+```{r}
+min_cost <- list('you'=min(expected_costs))
+```
+
+```{r, results="hide"}
+for(f in c('friend1','friend2','friend3')){
+    data <- list(
+        N=nrow(failures),
+        y=failures[[f]]
+        )
+    fit <- sampling(object=model, data=data, iter=10000,chains=4)
+    posterior_samples <- extract(fit)$lam 
+    expected_costs_f <- data.frame('cost'=as.numeric())
+    
+    for (i in 1:10) {
+        pois_draws <- sapply(posterior_samples, function(x) rpois(1,x))
+        expectation_value <- mean(sapply(pois_draws, function(x) cost_function(x,i)))
+        expected_costs_f[i,1] <- expectation_value
+    }
+    min_cost[f] <- min(expected_costs_f)
+}
+```
+
+```{r}
+min_cost
+```
+
+```{r}
+total_failures <- apply(failures, 1, sum)
+total_failures
+```
+
+```{r, results="hide"}
+fit <- sampling(object=model, data=list(y=total_failures,N=nrow(failures)), iter=10000,chains=4)
+posterior_samples <- extract(fit)$lam 
+expected_costs_s <- data.frame('cost'=as.numeric())
+
+for (i in 1:10) {
+    pois_draws <- sapply(posterior_samples, function(x) rpois(1,x))
+    expectation_value <- mean(sapply(pois_draws, function(x) cost_function(x,i)))
+    expected_costs_s[i,1] <- expectation_value
+}
+shared_min_cost <- min(expected_costs_s)
+```
+
+
+```{r}
+# Expected Cost for risk pooling
+shared_min_cost
+```
+
+```{r}
+# Expected cost for independent service contracts
+sum(unlist(min_cost))
+```
+
+
