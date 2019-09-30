@@ -27,6 +27,9 @@ we only measure 0 (tails) or 1 (heads).
 ``` r
 library(rstan)
 library(ggplot2)
+
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
 ```
 
 ## Prior
@@ -56,7 +59,7 @@ x <- data.frame(x=rbeta(10000,a,b))
 ggplot(x, aes(x=x)) + geom_histogram(bins=50)
 ```
 
-![](01b_coin_flips_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
+![](01b_coin_flips_files/figure-gfm/plot-prior-1.png)<!-- -->
 
 ## Building a model with rstan
 
@@ -92,8 +95,7 @@ parameters {
 }
 model {
     theta ~ beta(1, 1); // SPECIFY YOUR PRIOR HYPERPARAMETERS HERE
-    for (n in 1:N)
-        y[n] ~ bernoulli(theta);
+    y ~ bernoulli(theta);
 }
 "
 ```
@@ -157,7 +159,7 @@ samples <- data.frame('theta'=extract(fit)$theta)
 ggplot(samples, aes(x=theta)) + geom_histogram(bins=50) + labs(title='Samples from posterior')
 ```
 
-![](01b_coin_flips_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+![](01b_coin_flips_files/figure-gfm/plot-posterior-samples-1.png)<!-- -->
 
 *Note: results are hidden for stan\_model and sampling - otherwise there
 is a ton of output*
