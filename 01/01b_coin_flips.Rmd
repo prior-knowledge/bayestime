@@ -25,6 +25,9 @@ We'll start with the boring trivial problem of a (possibly weighted) coin. What 
 ```{r}
 library(rstan)
 library(ggplot2)
+
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
 ```
 
 ## Prior
@@ -36,7 +39,7 @@ The beta distribution is a natural choice for modeling $\theta$; it generates a 
 * (a=2, b=2) prior biased toward $\theta=0.5$  
 * (a=20, b=5) prior heavily biased toward $\theta=0.8$
 
-```{r}
+```{r plot-prior}
 a <- 1
 b <- 1
 x <- data.frame(x=rbeta(10000,a,b))
@@ -69,8 +72,7 @@ parameters {
 }
 model {
     theta ~ beta(1, 1); // SPECIFY YOUR PRIOR HYPERPARAMETERS HERE
-    for (n in 1:N)
-        y[n] ~ bernoulli(theta);
+    y ~ bernoulli(theta);
 }
 "
 ```
@@ -117,7 +119,7 @@ fit <- sampling(object=model, data=data, iter=10000,chains=4, show_messages=FALS
 
 Calling `extract(fit)$theta` will give an array of samples; since this is a one-dimensional problem, we can just visualize it with a histogram:
 
-```{r}
+```{r plot-posterior-samples}
 samples <- data.frame('theta'=extract(fit)$theta)
 ggplot(samples, aes(x=theta)) + geom_histogram(bins=50) + labs(title='Samples from posterior')
 ```

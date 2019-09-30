@@ -22,24 +22,28 @@ Nvals <- c(2,10,100,1000)
 ```
 
 In the code below:  
-`sample_fun <- function(x) rbinom(x,1,p=0.5)`  
+`sample_mean <- function(n) mean(rbinom(n,1,p=0.5))`  
 defines a function that returns a mean of x binomial samples. Since the
-binomial distribution can only return a 0 or 1, then sample(x=2) can
-only take values 0, 0.5, or 1. The `for` loop runs sample\_fun(x) for
-each value of x and plots a histogram of the sample means:
+binomial distribution can only return a 0 or 1, then `sample_mean(n=2)`
+can only take values 0, 0.5, or 1. The `for` loop runs `sample_mean(n)`
+for each value of `Nvals` and plots a histogram of the sample means:
 
 ``` r
-sample_fun <- function(x){
-    mean(rbinom(x,1,p=0.5))
+sample_mean <- function(n){
+    mean(rbinom(n,1,p=0.5))
 }
-par(mfrow=c(2,2))
-for(i in 1:length(Nvals)){
-    N <- Nvals[i]
-    hist(replicate(10000,sample_fun(N)), main=paste(N, 'sample means'), axes=FALSE, ylab="",xlab="")
+
+par(mfrow = c(2, 2))
+for(N in Nvals){
+    # calculate a mean of N samples 10,000 times
+    means <- replicate(10000, sample_mean(N))
+    
+    # plot the means
+    hist(means, main = paste(N, 'sample means'), axes = FALSE, ylab = "", xlab = "")
 }
 ```
 
-![](01a_Central_Limit_Theorem_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
+![](01a_Central_Limit_Theorem_files/figure-gfm/plot-sample-means-1.png)<!-- -->
 
 ## What’s next?
 
@@ -47,13 +51,13 @@ Try some different distributions:
 
   - Poisson (generally used for models of count data- you’ll see it in
     the next lab)  
-    `sample <- function(x) mean(rpois(x,2))`  
+    `sample_mean <- function(n) mean(rpois(n,2))`  
   - Gamma (very common as a prior distribution for Poisson and
     Exponential models)  
-    `sample <- function(x) mean(rgamma(x,7,1))`  
+    `sample_mean <- function(n) mean(rgamma(n,7,1))`  
   - Cauchy (distribution, among other things, of a ratio of
     Normally-distributed variables):  
-    `sample <- function(x) mean(rcauchy(x))`
+    `sample_mean <- function(n) mean(rcauchy(n))`
 
 Notice anything different with the Cauchy? You may need to set log=True
 for the histogram function. What’s happening here?
