@@ -66,7 +66,7 @@ prior_samples <- rgamma(n=1000,shape=a,scale=b)
 ggplot() + geom_histogram(aes(x = prior_samples), bins = 100)
 ```
 
-Now build the stan model:
+Now define the stan model:
 
 ```{r define-model}
 model_code <- "
@@ -121,7 +121,6 @@ prior_post <- bind_rows(post_results, prior_results)
 # plot a histogram
 ggplot(prior_post, aes(x = value, y = stat(density), fill = sample)) +
     geom_histogram(bins = 100, position = 'identity', alpha=0.7)
-    theme(legend.justification=c(1,1), legend.position=c(1,1), legend.title=element_blank())
 ```
 
 The plot above shows how the model starts to converge on a smaller range of plausible values for $\lambda$. Initially our prior was very wide but after fitting to the observed data we start to get a better estimate.
