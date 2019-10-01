@@ -20,7 +20,7 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE)
 
 * load synthetic data: number of elevator failures per year for your building and three nearby buildings  
 * model data as a Poisson-distributed variable, using a Gamma distribution as a prior over the Poisson intensity  
-* use posterior predictions about your model to ___
+* use posterior predictions about your model to determine whether the four buildings should pool their resources or continue to purchase elevator service individually.
 
 ```{r}
 library(rstan)
