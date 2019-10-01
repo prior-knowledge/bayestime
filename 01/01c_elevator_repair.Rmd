@@ -28,6 +28,7 @@ library(praise)
 library(rstan)
 # set a default ggplot2 theme to all other plots
 theme_set(theme_minimal())
+# use any cores we have for Stan model
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write=TRUE)
 ```
