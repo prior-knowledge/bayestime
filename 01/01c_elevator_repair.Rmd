@@ -117,7 +117,7 @@ g + geom_histogram(bins=100, position='identity',alpha=0.7) +
 
 ### Find the mean and 90% credible interval of the average number of failures per year¶
 
-```{r}
+```{r mean-samples}
 mean(posterior_samples)
 ```
 
