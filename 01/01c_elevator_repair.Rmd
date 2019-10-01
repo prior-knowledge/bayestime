@@ -121,7 +121,7 @@ g + geom_histogram(bins=100, position='identity',alpha=0.7) +
 mean(posterior_samples)
 ```
 
-```{r}
+```{r quantile-samples}
 paste("95 percent:", quantile(posterior_samples,0.95))
 paste("5 percent:", quantile(posterior_samples, 0.05))
 ```
