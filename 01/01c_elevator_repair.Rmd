@@ -22,7 +22,7 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE)
 * model data as a Poisson-distributed variable, using a Gamma distribution as a prior over the Poisson intensity  
 * use posterior predictions about your model to determine whether the four buildings should pool their resources or continue to purchase elevator service individually.
 
-```{r}
+```{r load-libraries,message=FALSE}
 library(tidyverse)
 library(praise)
 library(rstan)
@@ -30,13 +30,14 @@ library(rstan)
 theme_set(theme_minimal())
 # use any cores we have for Stan model
 options(mc.cores = parallel::detectCores())
+# write stan models to disk so we don't have to recompile every time
 rstan_options(auto_write=TRUE)
 ```
 
 ### Load the data
 
-```{r}
-failures <- read.csv('elevator_failures.csv')
+```{r import-data}
+failures <- read_csv('elevator_failures.csv')
 failures
 ```
 
@@ -56,17 +57,19 @@ $y \sim Poisson(\lambda)$
 
 **Note:** <span style="color:red">rgamma uses (shape, scale) to parameterize Gamma distribution; stan uses (alpha, beta) where alpha=shape and beta=1/scale.</span> Example samples from a Gamma distribution:
 
-```{r, plot-prior}
+```{r plot-prior}
 a <- 2
 b <- 2
 prior_samples <- rgamma(n=1000,shape=a,scale=b)
-hist(prior_samples,100)
+
+# plot the prior samples
+ggplot() + geom_histogram(aes(x = prior_samples), bins = 100)
 ```
 
 Now build the stan model:
 
-```{r}
-model_code = "
+```{r define-model}
+model_code <- "
 data {
     int<lower=0> N;
     int<lower=0> y[N];
@@ -81,49 +84,56 @@ model {
 "
 ```
 
-```{r, results="hide"}
+And compile it:
+```{r compile-model, results="hide"}
 model <- stan_model(model_code=model_code)
 ```
 
 ### Draw samples from the posterior
 
-Run inference on the data from your building.
+Run inference on the data from your building. First build a list of data required by the Stan model (`N` and `y`).
 
-```{r}
+```{r build-data}
 data <- list(
     N=nrow(failures),
     y=failures$you
 )
 ```
-
-```{r, results='hide'}
+Then use the `sampling()` function to run MCMC and produce samples of our estimate for `lam`. We will run for 10,000 iterations on 4 parallel chains.
+```{r fit-model,results='hide'}
 fit <- sampling(object=model, data=data, iter=10000,chains=4)
 fit
 ```
-
-```{r}
+We can extract the samples from this procedure using the `extract()`  function. 
+```{r extract-samples}
 posterior_samples <- extract(fit)$lam
 dim(posterior_samples)
 ```
 
-```{r, plot-posterior}
+Note that there are 20,000 samples. Where does this number come from? We ran four separate `chains`, each with 10,000 iterations. However, we also specified a `warmup` of 5,000 iterations, which means these samples are throw away. This leaves us with with a total of 5,000 useful iterations per chain, which totals 20,000.
+
+Let's plot a histogram of the the samples we have of the prior and posterior for $\lambda$. 
+```{r plot-posterior}
 # creating a dataframe to nicely use ggplot
-prior_post <- data.frame('sample'=c(rep('prior',length(prior_samples)),rep('posterior',length(posterior_samples))),
-                         'value'=c(prior_samples,posterior_samples))
-g <- ggplot(prior_post, aes(x=value,stat(density),fill=sample))
-g + geom_histogram(bins=100, position='identity',alpha=0.7) + 
+prior_results <- tibble(sample = "prior", value = prior_samples)
+post_results <- tibble(sample = "posterior", value = posterior_samples)
+prior_post <- bind_rows(post_results, prior_results)
+# plot a histogram
+ggplot(prior_post, aes(x = value, y = stat(density), fill = sample)) +
+    geom_histogram(bins = 100, position = 'identity', alpha=0.7)
     theme(legend.justification=c(1,1), legend.position=c(1,1), legend.title=element_blank())
 ```
+
+The plot above shows how the model starts to converge on a smaller range of plausible values for $\lambda$. Initially our prior was very wide but after fitting to the observed data we start to get a better estimate.
 
 ### Find the mean and 90% credible interval of the average number of failures per year¶
 
 ```{r mean-samples}
 mean(posterior_samples)
 ```
-
+We can calculate the 5% and 95% quantiles with the `quantile()` function:
 ```{r quantile-samples}
-paste("95 percent:", quantile(posterior_samples,0.95))
-paste("5 percent:", quantile(posterior_samples, 0.05))
+quantile(posterior_samples, c(0.05, 0.95))
 ```
 
 
