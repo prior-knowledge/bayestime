@@ -26,7 +26,8 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE)
 library(tidyverse)
 library(praise)
 library(rstan)
-
+# set a default ggplot2 theme to all other plots
+theme_set(theme_minimal())
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write=TRUE)
 ```
