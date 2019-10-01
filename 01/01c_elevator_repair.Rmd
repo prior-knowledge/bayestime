@@ -23,6 +23,8 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE)
 * use posterior predictions about your model to determine whether the four buildings should pool their resources or continue to purchase elevator service individually.
 
 ```{r}
+library(tidyverse)
+library(praise)
 library(rstan)
 library(ggplot2)
 
