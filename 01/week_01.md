@@ -56,7 +56,7 @@ You can answer almost any question using the Bayesian inference engine that we o
 4. **Test your code**. Generate fake data with the model and see if you can recover the known parameters.
 5. **Perform prior predictive checks**. How much do you need to constrain priors to rule out outrageous values? Is the model capable of generating data resembling your observed data? Are your priors unduly constraining your model, ie is it capable of detecting potentially competing possibilities?
 6. **Estimate the model**. Did the estimation converge? Do you need to tune the estimation?
-7. **Carry out posterior predictive checks**. Dream up enough test statistics to convince you and others that the model is useful. What features of the data does the model fail to produce? Can you expand the model somehow to capture this? If not, how fatal is this failure? If it is, re-evaluate your modeling choices and cycle through the process again.
+7. **Carry out posterior predictive checks**. Dream up enough test statistics to convince you and others that the model is useful. What features of the data does the model fail to produce? Can you expand the model somehow to capture this? If not, how fatal is this failure? If it is indeed a failure, re-evaluate your modeling choices and cycle through the process again.
 8. **Write up your results**. Decide what your model really tells you about the world and write it up. Ensure that you include your degree of certainty in every model estimate you produce.
 
 Put succinctly, in following this process,
@@ -66,7 +66,7 @@ Put succinctly, in following this process,
 Take it from Gelman and Shalizi in their published article _Philosophy and the practice of Bayesian statistics_
 > Likelihood and Bayesian inference are powerful, and with great power comes great responsibility. Complex models can and should be checked and falsified. This is how we can learn from our mistakes.
 
-For more motivation for this Bayesian inference engine see [Philosophy and the practice of Bayesian statistics](http://www.stat.columbia.edu/~gelman/research/published/philosophy.pdf) and references listed therein.
+For more motivation of our Bayesian inference engine see [Philosophy and the practice of Bayesian statistics](http://www.stat.columbia.edu/~gelman/research/published/philosophy.pdf) and references listed therein.
 
 ### What do we mean by falsify?
 We know our model is wrong. It is a simplification of the complex, unwieldy world we live in. So, what do we really mean by falsify?
@@ -79,7 +79,7 @@ Put succinctly, what we're attempting to do with model checking is to determine:
 >that the data source resembles the model closely enough, in the respects which matter to us, that reasoning based on the model will be reliable.
 
 ### Do not let the perfect be the enemy of the good
-A very famous and influential group of political scientists--King, Keohane, and Verba--wrote in their book _Designing Social Inquiry_ a very insightful passage on statistical inference in the social sciences:
+A very famous and influential group of political scientists--King, Keohane, and Verba--caution us not to let the perfect be the enemy of the good while conducting statistical inference in the social sciences in their book _Designing Social Inquiry_:
 
 >Nothing in our set of rules implies that we must run the perfect experiment (if such a thing existed) or collect all the relevant data before we can make valid social scientific inferences. An important topic is worth studying even if very little information is available.
 >The result of applying any research design in this situation will be relatively uncertain conclusions, but so long as we honestly report our uncertainty, this kind of study can be very useful. Limited information is often a necessary feature of social inquiry. Because the social world changes rapidly, analyses that help us understand those changes require that we describe them and seek to understand them contemporaneously, even when uncertainty about our conclusions is high.
@@ -88,19 +88,30 @@ A very famous and influential group of political scientists--King, Keohane, and 
 
 Now that we're sufficiently philosophically motivated, let's get down to brass tacks.
 
-
 ## Frequentist World
+Let's start with the frequentist view of the world. Frequentists suppose that the probability of flipping a coin is fixed by God. We observe noisy data that is the result of one of an infinite number of repeated experiments. Events in this infinite series of experiments occur with probabilities which represent the long-run frequencies of those events occurring in an infinite series of experimental repetitions.
 * Frequentists assume the data is random and results from sampling from a fixed and defined population.
-* Frequentists use inverse probability as evidence for a given hypothesis and compute the probability of obtaining a sample as extreme as or more than the one actually obtained assuming a hypothesis is true.
+* To a frequentist noise that obscures the real population process is attributable to sampling variation.
 
+Example: We flip a coin 10 times, and it lands heads 7 times. To a frequentist this is because the universe dealt us an odd sample.
 
+**Frequentist view the parameters of the probability model as being fixed and the known parts of the system--the data--as varying.**
 
 ## Bayesian World
-* Bayesians assume that we are witnesses to the data, which is fixed, and probabilities are an expression of subjective beliefs that can be updated in light of new data.
-* For Bayesians parameters are seen as varying or our knowledge about them is imperfect, while frequentists assume parameters are constant and represent a long run average.
+Wash your hands, take a walk, get a sip of coffee, clear your mind. In a Bayesian world fictitious repetitions do not exist. Probabilities here are abstractions which we use to express our uncertainty. Probability is a scale from 0--where we are certain an event will not occur--to 1--where we are certain that it will. In this world we witness the data, and we never perfectly know the value of an unknown parameter. We have epistemic uncertainty.
+* _Philosophical aside_ Is the parameter truly fixed, but our beliefs are uncertain? Or is there no definitive true probability of an event occurring, because the world is ever changing, and the system incessantly evolves? Take your pick. Either way the math is the same.
+
+## Compare and Contrast
+* Frequentists assume data is random and originates from a series of infinite repetitions. Bayesians assume that we are witnesses to the data, which is fixed.
+* Frequentists view parameters as fixed features of the universe that represent a long-run average. Bayesian conceive of probabilities as an expression of subjective beliefs that can be updated in light of new data.
+
+These differing perspectives set the two on diverging methods for inference.
+* Frequentists use inverse probability as evidence for a given hypothesis and compute the probability of obtaining a sample as extreme as or more than the one actually obtained assuming a hypothesis is true.
 * Bayes' formula circumvents the problem of generating fictious samples by inverting the Frequentist probability to obtain the probability of the hypothesis given the data we obtained.
 
-
+Put differently:
+* Frequentist inference conditions on a null hypothesis to assess the plausibility of the data one observes, with another step of reasoning required to either reflect of fail to reject the null hypothesis.
+* Bayesian inference involves conditioning on the data at hand to produce posterior probability statements about parameters and hypotheses.
 
 ## Probability Distributions are central to Bayesian inference
 In Bayesian models we quantify uncertainty with probability distributions. We input probability distributions to Bayes' rule and the output we receive is a probability distribution, so we need to be comfortable with these objects.
@@ -199,7 +210,6 @@ P(X <= 2) = 0.688
 P(X <= 3) = 0.938
 P(X <= 4) = 1.
 
-
 ### Continuous random variables
 * _Lambert's YouTube lecture on [continuous distributions](https://youtu.be/s87mffcX0xU), 8 minutes._
 
@@ -218,7 +228,6 @@ F(x) = integral(-infinity,x) f(t) dt
 _And we're just about done with calculus!_
 
 This is analogous to how we went from the PMF to the CDF for a discrete random variable, we summed up all values of the PMF that were less than or equal to x. For continuous random variables we have to integrate to sum up all values of the PDF less than or equal to x.
-
 
 ### Uniform Distributions
 A uniform random variable on the interval (a,b) is a completely random number between a and b, ie the PDF is constant over the interval.
@@ -259,24 +268,14 @@ In this situation we are summing a large number of independent factors, and the 
 
 2. _Epistemological justification._ If all we are willing to say about the distribution of a measure is the mean and variance, then the Gaussian distribution is most consistent with our assumptions. If we assume the measure has finite variance, then the Gaussian distribution is the shape that can be realized in the largest number of ways and does not introduce any new assumptions, ie it is the least surprising and least informative assumption we can make.
 
+## Two-dimensional probability distributions: marginal and conditional distributions, part deux
 
-## Two-dimensional probability distributions
-_Material:_
-* _Sections 3.3.4, 3.3.5 of Students' Guide_
-* _Slides 286 to 285 from Lecture 1_
-
-
-## Conditional distributions
-_Material:_
-* _Sections 3.3.4, 3.3.5 of Students' Guide_
-* _Slides 286 to 285 from Lecture 1_
-
+_Slides 286 to 311 from Lecture 1 is a good overview of two-dimensional probability distributions that could be used to talk about conditional and marginal distributions to firm up what we talked about in week 0. Alternatively, could create a simple example using randomly generated data from a bivariate normal with correlated variables._
 
 ## Process of Bayesian Inference
 Watch Lambert's YouTube lecture on [the intuition of Bayes' rule](https://youtu.be/yvWlpwnT1nw), 8 minutes.
 
 Go through the process of Bayesian inference at a high level, but in more detail than in week 0.
-
 
 # Lab
 
