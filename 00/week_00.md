@@ -1,4 +1,5 @@
-# Week 0, Introductions
+# Week 0
+# _Building Blocks of Probability_
 
 ### Goals of week 0:
 1. Develop understanding of the building blocks of probability.
@@ -298,7 +299,6 @@ By ruling out a hypothesis, conditioning makes others more likely.
 #### Backup example for independence
 Shapes and color example from Lambert page 52.
 
-
 Now let's graduate to 2 dice. Things are a little more complicated now.
 * Event space is: {{1,1},{1,2},{1,3},...{6,5},{6,6}}
 * Sample space is: {{1,1}, {same number},{total is 6},{total is 8}, ...}
@@ -308,22 +308,6 @@ Now let's graduate to 2 dice. Things are a little more complicated now.
 * What is the probability that the sum is 7?
 
 Now let's win some money. If you have $10 to bet, the minimum bet is $5, and you don't care if you lose the $10, what two bets should you make?
-
-#### Moving on to poker
-
-Your friend hits the poker table. Suppose the dealer uses only one 52 card deck.
-
-
-## What is statistical inference?
-> Statistical inference is concerned with drawing conclusions, from numerical data, about quantities that are not observed.
-> Bayesian Data Analysis, 3rd edition
-
-## What is Bayesian inference?
-> Bayesian inference is the process of fitting a probability model to a set of data and summarizing the result by a probability distribution on the parameters of the model and on unobserved quantities such as predictions for new observations.
-> Bayesian Data Analysis, 3rd edition
-
-
-
 
 ### Motivating example, disease detections
 
