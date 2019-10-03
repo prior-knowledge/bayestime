@@ -9,8 +9,6 @@ output:
 knitr::opts_chunk$set(echo = TRUE, message=FALSE)
 ```
 
-<span style="color:red">Red things are python that still need to be converted to R</span>
-
 ## Goals
 
 * Build a simple model based on synthetic count data: number of elevator failures per year in a building  
@@ -55,7 +53,7 @@ Likelihood:
 
 $y \sim Poisson(\lambda)$
 
-**Note:** <span style="color:red">rgamma uses (shape, scale) to parameterize Gamma distribution; stan uses (alpha, beta) where alpha=shape and beta=1/scale.</span> Example samples from a Gamma distribution:
+**Note:** rgamma uses (shape, scale) to parameterize Gamma distribution; stan uses (alpha, beta) where alpha=shape and beta=1/scale. Example samples from a Gamma distribution:
 
 ```{r plot-prior}
 a <- 2
@@ -65,6 +63,58 @@ prior_samples <- rgamma(n=1000,shape=a,scale=b)
 # plot the prior samples
 ggplot() + geom_histogram(aes(x = prior_samples), bins = 100)
 ```
+
+### Drawing samples from a prior
+
+If we have a likelihood $P(x|\theta)$ and a prior $P(\theta)$, then we can define a prior predictive distribution by marginalizing $\theta$ out,
+
+$P(x) = \int P(x|\theta)P(\theta)d\theta$
+
+which we could then use to sample fake data. This won't be horribly interesting for such a simple model- but as we get to more complicated models, it can be a good early-warning system for catching mistakes. If the prior really does represent our prior knowledge, then sampling data using it should generate data that seems plausible (but broader than the distribution of data we know about). If we get data that looks implausible (for example, violating a law of physics or spread across many orders of magnitude more than the data) then chances are we've mis-specified our priors. From *Visualization in Bayesian workflow*,
+
+> As with the standard concept of weakly informative priors, it is important that this prior predictive distribution for the data has at least some mass around extreme but plausible data sets. On the other hand, there should be no mass on completely implausible data sets. We recommend assessing how informative the prior distribution on the data is by generating a “flip book” of simulated datasets that can be used to investigate the variability and multivariate structure of the distribution
+
+For a simple model like this it'd be easy to use base R to generate prior predictive values- it's also possible to use `stan` for this; let's walk through the process so we can repeat it when we get to more interesting models.
+
+We'll specify prior hyperparameters as our data (which will let us play with them without recompiling the model each time) and use the `generated quantities` block to sample parameters and fake data. Note that no actual inference is happening within this model!
+
+```{r define-prior-pmodel}
+prior_model_code <- "
+data {
+    real alpha;
+    real beta;
+}
+model {
+}
+generated quantities {
+    real lambda;
+    int Y;
+    lambda = gamma_rng(alpha, beta);
+    Y = poisson_rng(lambda);
+}
+"
+```
+
+```{r compile-prior, results="hide"}
+prior_model <- stan_model(model_code=prior_model_code)
+```
+
+```{r prior_data}
+data <- list(
+    alpha = 2.,
+    beta = 0.5
+    )
+```
+
+When we generate prior samples, we need to run `stan` with the keyword argument `algorithm='Fixed_param'`.
+prior_samples = prior_model.sampling(data=data, iter=10000, chains=1, algorithm='Fixed_param')
+
+```{r}
+prior_samples <- sampling(object=prior_model, data=data, iter=10000,chains=1, algorithm='Fixed_param')
+```
+
+<span style="color:red">Where you left off - histograms and more updates below to match python</span>
+
 
 Now define the stan model:
 

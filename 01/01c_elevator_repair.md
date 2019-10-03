@@ -17,31 +17,39 @@ converted to R</span>
     building and three nearby buildings  
   - model data as a Poisson-distributed variable, using a Gamma
     distribution as a prior over the Poisson intensity  
-  - use posterior predictions about your model to \_\_\_
+  - use posterior predictions about your model to determine whether the
+    four buildings should pool their resources or continue to purchase
+    elevator service individually.
 
 <!-- end list -->
 
 ``` r
+library(tidyverse)
+library(praise)
 library(rstan)
-library(ggplot2)
-
+# set a default ggplot2 theme to all other plots
+theme_set(theme_minimal())
+# use any cores we have for Stan model
 options(mc.cores = parallel::detectCores())
+# write stan models to disk so we don't have to recompile every time
 rstan_options(auto_write=TRUE)
 ```
 
 ### Load the data
 
 ``` r
-failures <- read.csv('elevator_failures.csv')
+failures <- read_csv('elevator_failures.csv')
 failures
 ```
 
-    ##   you friend1 friend2 friend3
-    ## 1   2       6       4       2
-    ## 2   2       1       2       3
-    ## 3   3       4       2       0
-    ## 4   4       4       4       2
-    ## 5   4       5       3       3
+    ## # A tibble: 5 x 4
+    ##     you friend1 friend2 friend3
+    ##   <int>   <int>   <int>   <int>
+    ## 1     2       6       4       2
+    ## 2     2       1       2       3
+    ## 3     3       4       2       0
+    ## 4     4       4       4       2
+    ## 5     4       5       3       3
 
 ### Build the model
 
@@ -77,15 +85,17 @@ distribution:
 a <- 2
 b <- 2
 prior_samples <- rgamma(n=1000,shape=a,scale=b)
-hist(prior_samples,100)
+
+# plot the prior samples
+ggplot() + geom_histogram(aes(x = prior_samples), bins = 100)
 ```
 
 ![](01c_elevator_repair_files/figure-gfm/plot-prior-1.png)<!-- -->
 
-Now build the stan model:
+Now define the stan model:
 
 ``` r
-model_code = "
+model_code <- "
 data {
     int<lower=0> N;
     int<lower=0> y[N];
@@ -100,13 +110,16 @@ model {
 "
 ```
 
+And compile it:
+
 ``` r
 model <- stan_model(model_code=model_code)
 ```
 
 ### Draw samples from the posterior
 
-Run inference on the data from your building.
+Run inference on the data from your building. First build a list of data
+required by the Stan model (`N` and `y`).
 
 ``` r
 data <- list(
@@ -115,10 +128,17 @@ data <- list(
 )
 ```
 
+Then use the `sampling()` function to run MCMC and produce samples of
+our estimate for `lam`. We will run for 10,000 iterations on 4 parallel
+chains.
+
 ``` r
 fit <- sampling(object=model, data=data, iter=10000,chains=4)
 fit
 ```
+
+We can extract the samples from this procedure using the `extract()`
+function.
 
 ``` r
 posterior_samples <- extract(fit)$lam
@@ -127,16 +147,34 @@ dim(posterior_samples)
 
     ## [1] 20000
 
+Note that there are 20,000 samples. Where does this number come from? We
+ran four separate `chains`, each with 10,000 iterations. However, we
+also specified a `warmup` of 5,000 iterations, which means these samples
+are throw away. This leaves us with with a total of 5,000 useful
+iterations per chain, which totals 20,000.
+
+Let’s plot a histogram of the the samples we have of the prior and
+posterior for ![\\lambda](https://latex.codecogs.com/png.latex?%5Clambda
+"\\lambda").
+
 ``` r
 # creating a dataframe to nicely use ggplot
-prior_post <- data.frame('sample'=c(rep('prior',length(prior_samples)),rep('posterior',length(posterior_samples))),
-                         'value'=c(prior_samples,posterior_samples))
-g <- ggplot(prior_post, aes(x=value,stat(density),fill=sample))
-g + geom_histogram(bins=100, position='identity',alpha=0.7) + 
-    theme(legend.justification=c(1,1), legend.position=c(1,1), legend.title=element_blank())
+prior_results <- tibble(sample = "prior", value = prior_samples)
+post_results <- tibble(sample = "posterior", value = posterior_samples)
+prior_post <- bind_rows(post_results, prior_results)
+# plot a histogram
+ggplot(prior_post, aes(x = value, y = stat(density), fill = sample)) +
+    geom_histogram(bins = 100, position = 'identity', alpha=0.7)
 ```
 
 ![](01c_elevator_repair_files/figure-gfm/plot-posterior-1.png)<!-- -->
+
+The plot above shows how the model starts to converge on a smaller range
+of plausible values for
+![\\lambda](https://latex.codecogs.com/png.latex?%5Clambda "\\lambda").
+Initially our prior was very wide but after fitting to the observed data
+we start to get a better
+estimate.
 
 ### Find the mean and 90% credible interval of the average number of failures per year¶
 
@@ -144,19 +182,17 @@ g + geom_histogram(bins=100, position='identity',alpha=0.7) +
 mean(posterior_samples)
 ```
 
-    ## [1] 3.096126
+    ## [1] 3.100932
+
+We can calculate the 5% and 95% quantiles with the `quantile()`
+function:
 
 ``` r
-paste("95 percent:", quantile(posterior_samples,0.95))
+quantile(posterior_samples, c(0.05, 0.95))
 ```
 
-    ## [1] "95 percent: 4.45227455272852"
-
-``` r
-paste("5 percent:", quantile(posterior_samples, 0.05))
-```
-
-    ## [1] "5 percent: 1.95953372135962"
+    ##       5%      95% 
+    ## 1.996403 4.437594
 
 ### Challenge: use your model to make an actual decision
 
@@ -272,16 +308,16 @@ min_cost
 ```
 
     ## $you
-    ## [1] 4029.275
+    ## [1] 4055.9
     ## 
     ## $friend1
-    ## [1] 5141.25
+    ## [1] 5114.175
     ## 
     ## $friend2
-    ## [1] 4031.9
+    ## [1] 4070.075
     ## 
     ## $friend3
-    ## [1] 2947.375
+    ## [1] 2968.75
 
 ``` r
 total_failures <- apply(failures, 1, sum)
@@ -308,11 +344,11 @@ shared_min_cost <- min(expected_costs_s)
 shared_min_cost
 ```
 
-    ## [1] 13203.38
+    ## [1] 13209.92
 
 ``` r
 # Expected cost for independent service contracts
 sum(unlist(min_cost))
 ```
 
-    ## [1] 16149.8
+    ## [1] 16208.9
