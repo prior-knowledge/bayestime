@@ -9,8 +9,6 @@ output:
 knitr::opts_chunk$set(echo = TRUE, message=FALSE)
 ```
 
-<span style="color:red">Red things are python that still need to be converted to R</span>
-
 ## Goals
 
 * Build a simple model based on synthetic count data: number of elevator failures per year in a building  
@@ -55,15 +53,77 @@ Likelihood:
 
 $y \sim Poisson(\lambda)$
 
-**Note:** <span style="color:red">rgamma uses (shape, scale) to parameterize Gamma distribution; stan uses (alpha, beta) where alpha=shape and beta=1/scale.</span> Example samples from a Gamma distribution:
+**Note:** rgamma uses (shape, scale) to parameterize Gamma distribution; stan uses (alpha, beta) where alpha=shape and beta=1/scale. Example samples from a Gamma distribution:
 
 ```{r plot-prior}
 a <- 2
-b <- 2
+b <- 2 
 prior_samples <- rgamma(n=1000,shape=a,scale=b)
 
 # plot the prior samples
 ggplot() + geom_histogram(aes(x = prior_samples), bins = 100)
+```
+
+### Drawing samples from a prior
+
+If we have a likelihood $P(x|\theta)$ and a prior $P(\theta)$, then we can define a prior predictive distribution by marginalizing $\theta$ out,
+
+$P(x) = \int P(x|\theta)P(\theta)d\theta$
+
+which we could then use to sample fake data. This won't be horribly interesting for such a simple model- but as we get to more complicated models, it can be a good early-warning system for catching mistakes. If the prior really does represent our prior knowledge, then sampling data using it should generate data that seems plausible (but broader than the distribution of data we know about). If we get data that looks implausible (for example, violating a law of physics or spread across many orders of magnitude more than the data) then chances are we've mis-specified our priors. From *Visualization in Bayesian workflow*,
+
+> As with the standard concept of weakly informative priors, it is important that this prior predictive distribution for the data has at least some mass around extreme but plausible data sets. On the other hand, there should be no mass on completely implausible data sets. We recommend assessing how informative the prior distribution on the data is by generating a “flip book” of simulated datasets that can be used to investigate the variability and multivariate structure of the distribution
+
+For a simple model like this it'd be easy to use base R to generate prior predictive values- it's also possible to use `stan` for this; let's walk through the process so we can repeat it when we get to more interesting models.
+
+We'll specify prior hyperparameters as our data (which will let us play with them without recompiling the model each time) and use the `generated quantities` block to sample parameters and fake data. Note that no actual inference is happening within this model!
+
+```{r define-prior-pmodel}
+prior_model_code <- "
+data {
+    real alpha;
+    real beta;
+}
+model {
+}
+generated quantities {
+    real lambda;
+    int Y;
+    lambda = gamma_rng(alpha, beta);
+    Y = poisson_rng(lambda);
+}
+"
+```
+
+```{r compile-prior, results="hide"}
+prior_model <- stan_model(model_code=prior_model_code)
+```
+
+**Note:** Here we are using Stan to generate our priors, which uses $\alpha$ and $\beta$.
+
+```{r prior_data}
+data <- list(
+    alpha = 2.,
+    beta = 0.5
+    )
+```
+
+When we generate prior samples, we need to run `stan` with the keyword argument `algorithm='Fixed_param'`.
+prior_samples = prior_model.sampling(data=data, iter=10000, chains=1, algorithm='Fixed_param')
+
+```{r}
+prior_samples <- sampling(object=prior_model, data=data, iter=10000,chains=1, algorithm='Fixed_param')
+```
+
+```{r plot-prior-lambda}
+prior_lambda <- tibble('lambda'=extract(prior_samples)$lam)
+ggplot(prior_lambda, aes(x=lambda, y=stat(density))) + geom_histogram(bins=50) + xlab(expression(lambda)) + ylab(expression(p(lambda)))
+```
+
+```{r plot-prior-y}
+prior_Y <- tibble('Y'=extract(prior_samples)$Y)
+ggplot(prior_Y, aes(x=Y, y=stat(density))) + geom_histogram(binwidth=1) + xlab('elevator malfunctions per year') + 
+    ylab('prior predictive distribution')
 ```
 
 Now define the stan model:
@@ -71,15 +131,44 @@ Now define the stan model:
 ```{r define-model}
 model_code <- "
 data {
+    // the data block defines the data structures where our data will go
+    // N is the number of observations- an integer with a lower-bound of 0
     int<lower=0> N;
+    
+    // y is an array of the actual observations (integers with value 0 or 1), of length N
     int<lower=0> y[N];
 }
 parameters {
+    // the parameters block defines the variables we're doing inference on- in
+    // this case, just lambda, the poisson 'intensity' parameter. 
+    
+    // for a poisson distribution, this parameter is both the expected mean
+    // and the standard deviation
     real<lower=0> lam;
 }
 model {
-    lam ~ gamma(2,0.5); // SPECIFY YOUR PRIOR HYPERPARAMETERS HERE
-    y ~ poisson(lam);
+    // the model block ties the room together.
+    
+    // connect the lambda parameter to a prior distribution,
+    lam ~ gamma(2,0.5); // specify prior hyperparameters here
+    
+    // choose a likelihood to connect observations to the lambda parameter
+    for (n in 1:N)
+        y[n] ~ poisson(lam);
+}
+generated quantities {
+    // we can also have stan generate anything else we want- we'll use this a
+    // lot for posterior predictive checks. code in this block is evaluated 
+    // once per sample.
+    
+    // so every time stan draws a value of lambda, let's also have it draw
+    // a simulated observation from that value
+    vector[N] y_sim;
+    
+    // generate posterior predictive samples
+    for(i in 1:N) {
+        y_sim[i] = poisson_rng(lam);
+    }
 }
 "
 ```
@@ -99,12 +188,16 @@ data <- list(
     y=failures$you
 )
 ```
+
 Then use the `sampling()` function to run MCMC and produce samples of our estimate for `lam`. We will run for 10,000 iterations on 4 parallel chains.
+
 ```{r fit-model,results='hide'}
 fit <- sampling(object=model, data=data, iter=10000,chains=4)
 fit
 ```
+
 We can extract the samples from this procedure using the `extract()`  function. 
+
 ```{r extract-samples}
 posterior_samples <- extract(fit)$lam
 dim(posterior_samples)
@@ -112,10 +205,12 @@ dim(posterior_samples)
 
 Note that there are 20,000 samples. Where does this number come from? We ran four separate `chains`, each with 10,000 iterations. However, we also specified a `warmup` of 5,000 iterations, which means these samples are throw away. This leaves us with with a total of 5,000 useful iterations per chain, which totals 20,000.
 
+
+
 Let's plot a histogram of the the samples we have of the prior and posterior for $\lambda$. 
 ```{r plot-posterior}
 # creating a dataframe to nicely use ggplot
-prior_results <- tibble(sample = "prior", value = prior_samples)
+prior_results <- tibble(sample = "prior", value = prior_lambda$lambda)
 post_results <- tibble(sample = "posterior", value = posterior_samples)
 prior_post <- bind_rows(post_results, prior_results)
 # plot a histogram

@@ -1,9 +1,6 @@
 Week 1 lab: Elevator Repair
 ================
 
-<span style="color:red">Red things are python that still need to be
-converted to R</span>
-
 ## Goals
 
   - Build a simple model based on synthetic count data: number of
@@ -17,31 +14,39 @@ converted to R</span>
     building and three nearby buildings  
   - model data as a Poisson-distributed variable, using a Gamma
     distribution as a prior over the Poisson intensity  
-  - use posterior predictions about your model to \_\_\_
+  - use posterior predictions about your model to determine whether the
+    four buildings should pool their resources or continue to purchase
+    elevator service individually.
 
 <!-- end list -->
 
 ``` r
+library(tidyverse)
+library(praise)
 library(rstan)
-library(ggplot2)
-
+# set a default ggplot2 theme to all other plots
+theme_set(theme_minimal())
+# use any cores we have for Stan model
 options(mc.cores = parallel::detectCores())
+# write stan models to disk so we don't have to recompile every time
 rstan_options(auto_write=TRUE)
 ```
 
 ### Load the data
 
 ``` r
-failures <- read.csv('elevator_failures.csv')
+failures <- read_csv('elevator_failures.csv')
 failures
 ```
 
-    ##   you friend1 friend2 friend3
-    ## 1   2       6       4       2
-    ## 2   2       1       2       3
-    ## 3   3       4       2       0
-    ## 4   4       4       4       2
-    ## 5   4       5       3       3
+    ## # A tibble: 5 x 4
+    ##     you friend1 friend2 friend3
+    ##   <int>   <int>   <int>   <int>
+    ## 1     2       6       4       2
+    ## 2     2       1       2       3
+    ## 3     3       4       2       0
+    ## 4     4       4       4       2
+    ## 5     4       5       3       3
 
 ### Build the model
 
@@ -68,37 +73,186 @@ Likelihood:
 Poisson(\\lambda)](https://latex.codecogs.com/png.latex?y%20%5Csim%20Poisson%28%5Clambda%29
 "y \\sim Poisson(\\lambda)")
 
-**Note:** <span style="color:red">rgamma uses (shape, scale) to
-parameterize Gamma distribution; stan uses (alpha, beta) where
-alpha=shape and beta=1/scale.</span> Example samples from a Gamma
-distribution:
+**Note:** rgamma uses (shape, scale) to parameterize Gamma distribution;
+stan uses (alpha, beta) where alpha=shape and beta=1/scale. Example
+samples from a Gamma distribution:
 
 ``` r
 a <- 2
-b <- 2
+b <- 2 
 prior_samples <- rgamma(n=1000,shape=a,scale=b)
-hist(prior_samples,100)
+
+# plot the prior samples
+ggplot() + geom_histogram(aes(x = prior_samples), bins = 100)
 ```
 
 ![](01c_elevator_repair_files/figure-gfm/plot-prior-1.png)<!-- -->
 
-Now build the stan model:
+### Drawing samples from a prior
+
+If we have a likelihood
+![P(x|\\theta)](https://latex.codecogs.com/png.latex?P%28x%7C%5Ctheta%29
+"P(x|\\theta)") and a prior
+![P(\\theta)](https://latex.codecogs.com/png.latex?P%28%5Ctheta%29
+"P(\\theta)"), then we can define a prior predictive distribution by
+marginalizing ![\\theta](https://latex.codecogs.com/png.latex?%5Ctheta
+"\\theta") out,
+
+![P(x) = \\int
+P(x|\\theta)P(\\theta)d\\theta](https://latex.codecogs.com/png.latex?P%28x%29%20%3D%20%5Cint%20P%28x%7C%5Ctheta%29P%28%5Ctheta%29d%5Ctheta
+"P(x) = \\int P(x|\\theta)P(\\theta)d\\theta")
+
+which we could then use to sample fake data. This won’t be horribly
+interesting for such a simple model- but as we get to more complicated
+models, it can be a good early-warning system for catching mistakes. If
+the prior really does represent our prior knowledge, then sampling data
+using it should generate data that seems plausible (but broader than the
+distribution of data we know about). If we get data that looks
+implausible (for example, violating a law of physics or spread across
+many orders of magnitude more than the data) then chances are we’ve
+mis-specified our priors. From *Visualization in Bayesian workflow*,
+
+> As with the standard concept of weakly informative priors, it is
+> important that this prior predictive distribution for the data has at
+> least some mass around extreme but plausible data sets. On the other
+> hand, there should be no mass on completely implausible data sets. We
+> recommend assessing how informative the prior distribution on the data
+> is by generating a “flip book” of simulated datasets that can be used
+> to investigate the variability and multivariate structure of the
+> distribution
+
+For a simple model like this it’d be easy to use base R to generate
+prior predictive values- it’s also possible to use `stan` for this;
+let’s walk through the process so we can repeat it when we get to more
+interesting models.
+
+We’ll specify prior hyperparameters as our data (which will let us play
+with them without recompiling the model each time) and use the
+`generated quantities` block to sample parameters and fake data. Note
+that no actual inference is happening within this model\!
 
 ``` r
-model_code = "
+prior_model_code <- "
 data {
-    int<lower=0> N;
-    int<lower=0> y[N];
-}
-parameters {
-    real<lower=0> lam;
+    real alpha;
+    real beta;
 }
 model {
-    lam ~ gamma(2,0.5); // SPECIFY YOUR PRIOR HYPERPARAMETERS HERE
-    y ~ poisson(lam);
+}
+generated quantities {
+    real lambda;
+    int Y;
+    lambda = gamma_rng(alpha, beta);
+    Y = poisson_rng(lambda);
 }
 "
 ```
+
+``` r
+prior_model <- stan_model(model_code=prior_model_code)
+```
+
+**Note:** Here we are using Stan to generate our priors, which uses
+![\\alpha](https://latex.codecogs.com/png.latex?%5Calpha "\\alpha") and
+![\\beta](https://latex.codecogs.com/png.latex?%5Cbeta "\\beta").
+
+``` r
+data <- list(
+    alpha = 2.,
+    beta = 0.5
+    )
+```
+
+When we generate prior samples, we need to run `stan` with the keyword
+argument `algorithm='Fixed_param'`. prior\_samples =
+prior\_model.sampling(data=data, iter=10000, chains=1,
+algorithm=‘Fixed\_param’)
+
+``` r
+prior_samples <- sampling(object=prior_model, data=data, iter=10000,chains=1, algorithm='Fixed_param')
+```
+
+    ## 
+    ## SAMPLING FOR MODEL '54bfaee84b9bb3981464f3a4f172cd73' NOW (CHAIN 1).
+    ## Iteration:    1 / 10000 [  0%]  (Sampling)
+    ## Iteration: 1000 / 10000 [ 10%]  (Sampling)
+    ## Iteration: 2000 / 10000 [ 20%]  (Sampling)
+    ## Iteration: 3000 / 10000 [ 30%]  (Sampling)
+    ## Iteration: 4000 / 10000 [ 40%]  (Sampling)
+    ## Iteration: 5000 / 10000 [ 50%]  (Sampling)
+    ## Iteration: 6000 / 10000 [ 60%]  (Sampling)
+    ## Iteration: 7000 / 10000 [ 70%]  (Sampling)
+    ## Iteration: 8000 / 10000 [ 80%]  (Sampling)
+    ## Iteration: 9000 / 10000 [ 90%]  (Sampling)
+    ## Iteration: 10000 / 10000 [100%]  (Sampling)
+    ## 
+    ##  Elapsed Time: 0 seconds (Warm-up)
+    ##                0.016 seconds (Sampling)
+    ##                0.016 seconds (Total)
+
+``` r
+prior_lambda <- tibble('lambda'=extract(prior_samples)$lam)
+ggplot(prior_lambda, aes(x=lambda, y=stat(density))) + geom_histogram(bins=50) + xlab(expression(lambda)) + ylab(expression(p(lambda)))
+```
+
+![](01c_elevator_repair_files/figure-gfm/plot-prior-lambda-1.png)<!-- -->
+
+``` r
+prior_Y <- tibble('Y'=extract(prior_samples)$Y)
+ggplot(prior_Y, aes(x=Y, y=stat(density))) + geom_histogram(binwidth=1) + xlab('elevator malfunctions per year') + 
+    ylab('prior predictive distribution')
+```
+
+![](01c_elevator_repair_files/figure-gfm/plot-prior-y-1.png)<!-- -->
+
+Now define the stan model:
+
+``` r
+model_code <- "
+data {
+    // the data block defines the data structures where our data will go
+    // N is the number of observations- an integer with a lower-bound of 0
+    int<lower=0> N;
+    
+    // y is an array of the actual observations (integers with value 0 or 1), of length N
+    int<lower=0> y[N];
+}
+parameters {
+    // the parameters block defines the variables we're doing inference on- in
+    // this case, just lambda, the poisson 'intensity' parameter. 
+    
+    // for a poisson distribution, this parameter is both the expected mean
+    // and the standard deviation
+    real<lower=0> lam;
+}
+model {
+    // the model block ties the room together.
+    
+    // connect the lambda parameter to a prior distribution,
+    lam ~ gamma(2,0.5); // specify prior hyperparameters here
+    
+    // choose a likelihood to connect observations to the lambda parameter
+    for (n in 1:N)
+        y[n] ~ poisson(lam);
+}
+generated quantities {
+    // we can also have stan generate anything else we want- we'll use this a
+    // lot for posterior predictive checks. code in this block is evaluated 
+    // once per sample.
+    
+    // so every time stan draws a value of lambda, let's also have it draw
+    // a simulated observation from that value
+    vector[N] y_sim;
+    
+    // generate posterior predictive samples
+    for(i in 1:N) {
+        y_sim[i] = poisson_rng(lam);
+    }
+}
+"
+```
+
+And compile it:
 
 ``` r
 model <- stan_model(model_code=model_code)
@@ -106,7 +260,8 @@ model <- stan_model(model_code=model_code)
 
 ### Draw samples from the posterior
 
-Run inference on the data from your building.
+Run inference on the data from your building. First build a list of data
+required by the Stan model (`N` and `y`).
 
 ``` r
 data <- list(
@@ -115,10 +270,17 @@ data <- list(
 )
 ```
 
+Then use the `sampling()` function to run MCMC and produce samples of
+our estimate for `lam`. We will run for 10,000 iterations on 4 parallel
+chains.
+
 ``` r
 fit <- sampling(object=model, data=data, iter=10000,chains=4)
 fit
 ```
+
+We can extract the samples from this procedure using the `extract()`
+function.
 
 ``` r
 posterior_samples <- extract(fit)$lam
@@ -127,16 +289,34 @@ dim(posterior_samples)
 
     ## [1] 20000
 
+Note that there are 20,000 samples. Where does this number come from? We
+ran four separate `chains`, each with 10,000 iterations. However, we
+also specified a `warmup` of 5,000 iterations, which means these samples
+are throw away. This leaves us with with a total of 5,000 useful
+iterations per chain, which totals 20,000.
+
+Let’s plot a histogram of the the samples we have of the prior and
+posterior for ![\\lambda](https://latex.codecogs.com/png.latex?%5Clambda
+"\\lambda").
+
 ``` r
 # creating a dataframe to nicely use ggplot
-prior_post <- data.frame('sample'=c(rep('prior',length(prior_samples)),rep('posterior',length(posterior_samples))),
-                         'value'=c(prior_samples,posterior_samples))
-g <- ggplot(prior_post, aes(x=value,stat(density),fill=sample))
-g + geom_histogram(bins=100, position='identity',alpha=0.7) + 
-    theme(legend.justification=c(1,1), legend.position=c(1,1), legend.title=element_blank())
+prior_results <- tibble(sample = "prior", value = prior_lambda$lambda)
+post_results <- tibble(sample = "posterior", value = posterior_samples)
+prior_post <- bind_rows(post_results, prior_results)
+# plot a histogram
+ggplot(prior_post, aes(x = value, y = stat(density), fill = sample)) +
+    geom_histogram(bins = 100, position = 'identity', alpha=0.7)
 ```
 
 ![](01c_elevator_repair_files/figure-gfm/plot-posterior-1.png)<!-- -->
+
+The plot above shows how the model starts to converge on a smaller range
+of plausible values for
+![\\lambda](https://latex.codecogs.com/png.latex?%5Clambda "\\lambda").
+Initially our prior was very wide but after fitting to the observed data
+we start to get a better
+estimate.
 
 ### Find the mean and 90% credible interval of the average number of failures per year¶
 
@@ -144,19 +324,17 @@ g + geom_histogram(bins=100, position='identity',alpha=0.7) +
 mean(posterior_samples)
 ```
 
-    ## [1] 3.096126
+    ## [1] 3.094464
+
+We can calculate the 5% and 95% quantiles with the `quantile()`
+function:
 
 ``` r
-paste("95 percent:", quantile(posterior_samples,0.95))
+quantile(posterior_samples, c(0.05, 0.95))
 ```
 
-    ## [1] "95 percent: 4.45227455272852"
-
-``` r
-paste("5 percent:", quantile(posterior_samples, 0.05))
-```
-
-    ## [1] "5 percent: 1.95953372135962"
+    ##       5%      95% 
+    ## 1.974136 4.427865
 
 ### Challenge: use your model to make an actual decision
 
@@ -272,16 +450,16 @@ min_cost
 ```
 
     ## $you
-    ## [1] 4029.275
+    ## [1] 4056.425
     ## 
     ## $friend1
-    ## [1] 5141.25
+    ## [1] 5100.6
     ## 
     ## $friend2
-    ## [1] 4031.9
+    ## [1] 4050.575
     ## 
     ## $friend3
-    ## [1] 2947.375
+    ## [1] 2943.85
 
 ``` r
 total_failures <- apply(failures, 1, sum)
@@ -308,11 +486,11 @@ shared_min_cost <- min(expected_costs_s)
 shared_min_cost
 ```
 
-    ## [1] 13203.38
+    ## [1] 13208.25
 
 ``` r
 # Expected cost for independent service contracts
 sum(unlist(min_cost))
 ```
 
-    ## [1] 16149.8
+    ## [1] 16151.45
