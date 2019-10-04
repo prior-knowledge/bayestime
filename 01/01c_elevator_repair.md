@@ -1,9 +1,6 @@
 Week 1 lab: Elevator Repair
 ================
 
-<span style="color:red">Red things are python that still need to be
-converted to R</span>
-
 ## Goals
 
   - Build a simple model based on synthetic count data: number of
@@ -76,14 +73,13 @@ Likelihood:
 Poisson(\\lambda)](https://latex.codecogs.com/png.latex?y%20%5Csim%20Poisson%28%5Clambda%29
 "y \\sim Poisson(\\lambda)")
 
-**Note:** <span style="color:red">rgamma uses (shape, scale) to
-parameterize Gamma distribution; stan uses (alpha, beta) where
-alpha=shape and beta=1/scale.</span> Example samples from a Gamma
-distribution:
+**Note:** rgamma uses (shape, scale) to parameterize Gamma distribution;
+stan uses (alpha, beta) where alpha=shape and beta=1/scale. Example
+samples from a Gamma distribution:
 
 ``` r
 a <- 2
-b <- 2
+b <- 2 
 prior_samples <- rgamma(n=1000,shape=a,scale=b)
 
 # plot the prior samples
@@ -92,20 +88,166 @@ ggplot() + geom_histogram(aes(x = prior_samples), bins = 100)
 
 ![](01c_elevator_repair_files/figure-gfm/plot-prior-1.png)<!-- -->
 
+### Drawing samples from a prior
+
+If we have a likelihood
+![P(x|\\theta)](https://latex.codecogs.com/png.latex?P%28x%7C%5Ctheta%29
+"P(x|\\theta)") and a prior
+![P(\\theta)](https://latex.codecogs.com/png.latex?P%28%5Ctheta%29
+"P(\\theta)"), then we can define a prior predictive distribution by
+marginalizing ![\\theta](https://latex.codecogs.com/png.latex?%5Ctheta
+"\\theta") out,
+
+![P(x) = \\int
+P(x|\\theta)P(\\theta)d\\theta](https://latex.codecogs.com/png.latex?P%28x%29%20%3D%20%5Cint%20P%28x%7C%5Ctheta%29P%28%5Ctheta%29d%5Ctheta
+"P(x) = \\int P(x|\\theta)P(\\theta)d\\theta")
+
+which we could then use to sample fake data. This won’t be horribly
+interesting for such a simple model- but as we get to more complicated
+models, it can be a good early-warning system for catching mistakes. If
+the prior really does represent our prior knowledge, then sampling data
+using it should generate data that seems plausible (but broader than the
+distribution of data we know about). If we get data that looks
+implausible (for example, violating a law of physics or spread across
+many orders of magnitude more than the data) then chances are we’ve
+mis-specified our priors. From *Visualization in Bayesian workflow*,
+
+> As with the standard concept of weakly informative priors, it is
+> important that this prior predictive distribution for the data has at
+> least some mass around extreme but plausible data sets. On the other
+> hand, there should be no mass on completely implausible data sets. We
+> recommend assessing how informative the prior distribution on the data
+> is by generating a “flip book” of simulated datasets that can be used
+> to investigate the variability and multivariate structure of the
+> distribution
+
+For a simple model like this it’d be easy to use base R to generate
+prior predictive values- it’s also possible to use `stan` for this;
+let’s walk through the process so we can repeat it when we get to more
+interesting models.
+
+We’ll specify prior hyperparameters as our data (which will let us play
+with them without recompiling the model each time) and use the
+`generated quantities` block to sample parameters and fake data. Note
+that no actual inference is happening within this model\!
+
+``` r
+prior_model_code <- "
+data {
+    real alpha;
+    real beta;
+}
+model {
+}
+generated quantities {
+    real lambda;
+    int Y;
+    lambda = gamma_rng(alpha, beta);
+    Y = poisson_rng(lambda);
+}
+"
+```
+
+``` r
+prior_model <- stan_model(model_code=prior_model_code)
+```
+
+**Note:** Here we are using Stan to generate our priors, which uses
+![\\alpha](https://latex.codecogs.com/png.latex?%5Calpha "\\alpha") and
+![\\beta](https://latex.codecogs.com/png.latex?%5Cbeta "\\beta").
+
+``` r
+data <- list(
+    alpha = 2.,
+    beta = 0.5
+    )
+```
+
+When we generate prior samples, we need to run `stan` with the keyword
+argument `algorithm='Fixed_param'`. prior\_samples =
+prior\_model.sampling(data=data, iter=10000, chains=1,
+algorithm=‘Fixed\_param’)
+
+``` r
+prior_samples <- sampling(object=prior_model, data=data, iter=10000,chains=1, algorithm='Fixed_param')
+```
+
+    ## 
+    ## SAMPLING FOR MODEL '54bfaee84b9bb3981464f3a4f172cd73' NOW (CHAIN 1).
+    ## Iteration:    1 / 10000 [  0%]  (Sampling)
+    ## Iteration: 1000 / 10000 [ 10%]  (Sampling)
+    ## Iteration: 2000 / 10000 [ 20%]  (Sampling)
+    ## Iteration: 3000 / 10000 [ 30%]  (Sampling)
+    ## Iteration: 4000 / 10000 [ 40%]  (Sampling)
+    ## Iteration: 5000 / 10000 [ 50%]  (Sampling)
+    ## Iteration: 6000 / 10000 [ 60%]  (Sampling)
+    ## Iteration: 7000 / 10000 [ 70%]  (Sampling)
+    ## Iteration: 8000 / 10000 [ 80%]  (Sampling)
+    ## Iteration: 9000 / 10000 [ 90%]  (Sampling)
+    ## Iteration: 10000 / 10000 [100%]  (Sampling)
+    ## 
+    ##  Elapsed Time: 0 seconds (Warm-up)
+    ##                0.016 seconds (Sampling)
+    ##                0.016 seconds (Total)
+
+``` r
+prior_lambda <- tibble('lambda'=extract(prior_samples)$lam)
+ggplot(prior_lambda, aes(x=lambda, y=stat(density))) + geom_histogram(bins=50) + xlab(expression(lambda)) + ylab(expression(p(lambda)))
+```
+
+![](01c_elevator_repair_files/figure-gfm/plot-prior-lambda-1.png)<!-- -->
+
+``` r
+prior_Y <- tibble('Y'=extract(prior_samples)$Y)
+ggplot(prior_Y, aes(x=Y, y=stat(density))) + geom_histogram(binwidth=1) + xlab('elevator malfunctions per year') + 
+    ylab('prior predictive distribution')
+```
+
+![](01c_elevator_repair_files/figure-gfm/plot-prior-y-1.png)<!-- -->
+
 Now define the stan model:
 
 ``` r
 model_code <- "
 data {
+    // the data block defines the data structures where our data will go
+    // N is the number of observations- an integer with a lower-bound of 0
     int<lower=0> N;
+    
+    // y is an array of the actual observations (integers with value 0 or 1), of length N
     int<lower=0> y[N];
 }
 parameters {
+    // the parameters block defines the variables we're doing inference on- in
+    // this case, just lambda, the poisson 'intensity' parameter. 
+    
+    // for a poisson distribution, this parameter is both the expected mean
+    // and the standard deviation
     real<lower=0> lam;
 }
 model {
-    lam ~ gamma(2,0.5); // SPECIFY YOUR PRIOR HYPERPARAMETERS HERE
-    y ~ poisson(lam);
+    // the model block ties the room together.
+    
+    // connect the lambda parameter to a prior distribution,
+    lam ~ gamma(2,0.5); // specify prior hyperparameters here
+    
+    // choose a likelihood to connect observations to the lambda parameter
+    for (n in 1:N)
+        y[n] ~ poisson(lam);
+}
+generated quantities {
+    // we can also have stan generate anything else we want- we'll use this a
+    // lot for posterior predictive checks. code in this block is evaluated 
+    // once per sample.
+    
+    // so every time stan draws a value of lambda, let's also have it draw
+    // a simulated observation from that value
+    vector[N] y_sim;
+    
+    // generate posterior predictive samples
+    for(i in 1:N) {
+        y_sim[i] = poisson_rng(lam);
+    }
 }
 "
 ```
@@ -159,7 +301,7 @@ posterior for ![\\lambda](https://latex.codecogs.com/png.latex?%5Clambda
 
 ``` r
 # creating a dataframe to nicely use ggplot
-prior_results <- tibble(sample = "prior", value = prior_samples)
+prior_results <- tibble(sample = "prior", value = prior_lambda$lambda)
 post_results <- tibble(sample = "posterior", value = posterior_samples)
 prior_post <- bind_rows(post_results, prior_results)
 # plot a histogram
@@ -182,7 +324,7 @@ estimate.
 mean(posterior_samples)
 ```
 
-    ## [1] 3.100932
+    ## [1] 3.094464
 
 We can calculate the 5% and 95% quantiles with the `quantile()`
 function:
@@ -192,7 +334,7 @@ quantile(posterior_samples, c(0.05, 0.95))
 ```
 
     ##       5%      95% 
-    ## 1.996403 4.437594
+    ## 1.974136 4.427865
 
 ### Challenge: use your model to make an actual decision
 
@@ -308,16 +450,16 @@ min_cost
 ```
 
     ## $you
-    ## [1] 4055.9
+    ## [1] 4056.425
     ## 
     ## $friend1
-    ## [1] 5114.175
+    ## [1] 5100.6
     ## 
     ## $friend2
-    ## [1] 4070.075
+    ## [1] 4050.575
     ## 
     ## $friend3
-    ## [1] 2968.75
+    ## [1] 2943.85
 
 ``` r
 total_failures <- apply(failures, 1, sum)
@@ -344,11 +486,11 @@ shared_min_cost <- min(expected_costs_s)
 shared_min_cost
 ```
 
-    ## [1] 13209.92
+    ## [1] 13208.25
 
 ``` r
 # Expected cost for independent service contracts
 sum(unlist(min_cost))
 ```
 
-    ## [1] 16208.9
+    ## [1] 16151.45
