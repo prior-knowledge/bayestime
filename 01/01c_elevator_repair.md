@@ -24,6 +24,7 @@ Week 1 lab: Elevator Repair
 library(tidyverse)
 library(praise)
 library(rstan)
+<<<<<<< HEAD
 
 # set a default ggplot2 theme to all other plots
 theme_set(theme_minimal())
@@ -31,6 +32,12 @@ theme_set(theme_minimal())
 # use any cores we have for Stan model
 options(mc.cores = parallel::detectCores())
 
+=======
+# set a default ggplot2 theme to all other plots
+theme_set(theme_minimal())
+# use any cores we have for Stan model
+options(mc.cores = parallel::detectCores())
+>>>>>>> master
 # write stan models to disk so we don't have to recompile every time
 rstan_options(auto_write=TRUE)
 ```
@@ -44,7 +51,11 @@ failures
 
     ## # A tibble: 5 x 4
     ##     you friend1 friend2 friend3
+<<<<<<< HEAD
     ##   <dbl>   <dbl>   <dbl>   <dbl>
+=======
+    ##   <int>   <int>   <int>   <int>
+>>>>>>> master
     ## 1     2       6       4       2
     ## 2     2       1       2       3
     ## 3     3       4       2       0
@@ -76,11 +87,18 @@ Likelihood:
 Poisson(\\lambda)](https://latex.codecogs.com/png.latex?y%20%5Csim%20Poisson%28%5Clambda%29
 "y \\sim Poisson(\\lambda)")
 
+<<<<<<< HEAD
 Example samples from a Gamma distribution:
+=======
+**Note:** rgamma uses (shape, scale) to parameterize Gamma distribution;
+stan uses (alpha, beta) where alpha=shape and beta=1/scale. Example
+samples from a Gamma distribution:
+>>>>>>> master
 
 ``` r
 # generate random samples from a the gamma distribution
 a <- 2
+<<<<<<< HEAD
 b <- 0.5
 prior_samples <- tibble(lambda = rgamma(n = 1000, a, b))
 prior_samples
@@ -104,11 +122,22 @@ prior_samples
 ``` r
 # plot the prior samples
 ggplot(prior_samples) + geom_histogram(aes(x = lambda), bins = 100)
+=======
+b <- 2 
+prior_samples <- rgamma(n=1000,shape=a,scale=b)
+
+# plot the prior samples
+ggplot() + geom_histogram(aes(x = prior_samples), bins = 100)
+>>>>>>> master
 ```
 
 ![](01c_elevator_repair_files/figure-gfm/plot-prior-1.png)<!-- -->
 
+<<<<<<< HEAD
 ## Drawing samples from a prior
+=======
+### Drawing samples from a prior
+>>>>>>> master
 
 If we have a likelihood
 ![P(x|\\theta)](https://latex.codecogs.com/png.latex?P%28x%7C%5Ctheta%29
@@ -150,6 +179,7 @@ We’ll specify prior hyperparameters as our data (which will let us play
 with them without recompiling the model each time) and use the
 `generated quantities` block to sample parameters and fake data. Note
 that no actual inference is happening within this model\!
+<<<<<<< HEAD
 
 ``` r
 prior_model_code <- "
@@ -291,6 +321,88 @@ encounter are:
 ``` r
 model_code <- "
 data {
+=======
+
+``` r
+prior_model_code <- "
+data {
+    real alpha;
+    real beta;
+}
+model {
+}
+generated quantities {
+    real lambda;
+    int Y;
+    lambda = gamma_rng(alpha, beta);
+    Y = poisson_rng(lambda);
+}
+"
+```
+
+``` r
+prior_model <- stan_model(model_code=prior_model_code)
+```
+
+**Note:** Here we are using Stan to generate our priors, which uses
+![\\alpha](https://latex.codecogs.com/png.latex?%5Calpha "\\alpha") and
+![\\beta](https://latex.codecogs.com/png.latex?%5Cbeta "\\beta").
+
+``` r
+data <- list(
+    alpha = 2.,
+    beta = 0.5
+    )
+```
+
+When we generate prior samples, we need to run `stan` with the keyword
+argument `algorithm='Fixed_param'`. prior\_samples =
+prior\_model.sampling(data=data, iter=10000, chains=1,
+algorithm=‘Fixed\_param’)
+
+``` r
+prior_samples <- sampling(object=prior_model, data=data, iter=10000,chains=1, algorithm='Fixed_param')
+```
+
+    ## 
+    ## SAMPLING FOR MODEL '54bfaee84b9bb3981464f3a4f172cd73' NOW (CHAIN 1).
+    ## Iteration:    1 / 10000 [  0%]  (Sampling)
+    ## Iteration: 1000 / 10000 [ 10%]  (Sampling)
+    ## Iteration: 2000 / 10000 [ 20%]  (Sampling)
+    ## Iteration: 3000 / 10000 [ 30%]  (Sampling)
+    ## Iteration: 4000 / 10000 [ 40%]  (Sampling)
+    ## Iteration: 5000 / 10000 [ 50%]  (Sampling)
+    ## Iteration: 6000 / 10000 [ 60%]  (Sampling)
+    ## Iteration: 7000 / 10000 [ 70%]  (Sampling)
+    ## Iteration: 8000 / 10000 [ 80%]  (Sampling)
+    ## Iteration: 9000 / 10000 [ 90%]  (Sampling)
+    ## Iteration: 10000 / 10000 [100%]  (Sampling)
+    ## 
+    ##  Elapsed Time: 0 seconds (Warm-up)
+    ##                0.016 seconds (Sampling)
+    ##                0.016 seconds (Total)
+
+``` r
+prior_lambda <- tibble('lambda'=extract(prior_samples)$lam)
+ggplot(prior_lambda, aes(x=lambda, y=stat(density))) + geom_histogram(bins=50) + xlab(expression(lambda)) + ylab(expression(p(lambda)))
+```
+
+![](01c_elevator_repair_files/figure-gfm/plot-prior-lambda-1.png)<!-- -->
+
+``` r
+prior_Y <- tibble('Y'=extract(prior_samples)$Y)
+ggplot(prior_Y, aes(x=Y, y=stat(density))) + geom_histogram(binwidth=1) + xlab('elevator malfunctions per year') + 
+    ylab('prior predictive distribution')
+```
+
+![](01c_elevator_repair_files/figure-gfm/plot-prior-y-1.png)<!-- -->
+
+Now define the stan model:
+
+``` r
+model_code <- "
+data {
+>>>>>>> master
     // the data block defines the data structures where our data will go
     // N is the number of observations- an integer with a lower-bound of 0
     int<lower=0> N;
@@ -305,19 +417,46 @@ parameters {
     
     // for a poisson distribution, this parameter is both the expected mean
     // and the standard deviation
+<<<<<<< HEAD
     real<lower=0> lambda;
+=======
+    real<lower=0> lam;
+>>>>>>> master
 }
 
 model {
     // the model block ties the room together.
     
     // connect the lambda parameter to a prior distribution,
+<<<<<<< HEAD
     lambda ~ gamma(2, 0.5); // specify prior hyperparameters here
     
     // choose a likelihood to connect observations to the lambda parameter
     y ~ poisson(lambda);
+=======
+    lam ~ gamma(2,0.5); // specify prior hyperparameters here
+    
+    // choose a likelihood to connect observations to the lambda parameter
+    for (n in 1:N)
+        y[n] ~ poisson(lam);
+}
+generated quantities {
+    // we can also have stan generate anything else we want- we'll use this a
+    // lot for posterior predictive checks. code in this block is evaluated 
+    // once per sample.
+    
+    // so every time stan draws a value of lambda, let's also have it draw
+    // a simulated observation from that value
+    vector[N] y_sim;
+    
+    // generate posterior predictive samples
+    for(i in 1:N) {
+        y_sim[i] = poisson_rng(lam);
+    }
+>>>>>>> master
 }
 
+<<<<<<< HEAD
 generated quantities {
     // we can also have stan generate anything else we want- we'll use this a
     // lot for posterior predictive checks. code in this block is evaluated 
@@ -332,6 +471,12 @@ generated quantities {
 }
 "
 model <- stan_model(model_code = model_code)
+=======
+And compile it:
+
+``` r
+model <- stan_model(model_code=model_code)
+>>>>>>> master
 ```
 
 ### Draw samples from the posterior
@@ -347,6 +492,7 @@ data <- list(
 ```
 
 Then use the `sampling()` function to run MCMC and produce samples of
+<<<<<<< HEAD
 our estimate for `lambda`. We will run for 10,000 iterations on 4
 parallel chains.
 
@@ -355,11 +501,16 @@ fit <- sampling(model, data, iter = 10000, chains = 4)
 ```
 
 Printing `fit` summarizes the result of the model.
+=======
+our estimate for `lam`. We will run for 10,000 iterations on 4 parallel
+chains.
+>>>>>>> master
 
 ``` r
 fit
 ```
 
+<<<<<<< HEAD
     ## Inference for Stan model: 21616dde0c961fa8faf5b30e3eee6da0.
     ## 4 chains, each with iter=10000; warmup=5000; thin=1; 
     ## post-warmup draws per chain=5000, total post-warmup draws=20000.
@@ -376,6 +527,10 @@ fit
 
 We can extract the samples from this procedure using the
 `as.data.frame()` function, as we did previously.
+=======
+We can extract the samples from this procedure using the `extract()`
+function.
+>>>>>>> master
 
 ``` r
 posterior_samples <- as.data.frame(fit)
@@ -408,8 +563,19 @@ Let’s plot a histogram of the the samples we have of the prior and
 posterior for ![\\lambda](https://latex.codecogs.com/png.latex?%5Clambda
 "\\lambda").
 
+Note that there are 20,000 samples. Where does this number come from? We
+ran four separate `chains`, each with 10,000 iterations. However, we
+also specified a `warmup` of 5,000 iterations, which means these samples
+are throw away. This leaves us with with a total of 5,000 useful
+iterations per chain, which totals 20,000.
+
+Let’s plot a histogram of the the samples we have of the prior and
+posterior for ![\\lambda](https://latex.codecogs.com/png.latex?%5Clambda
+"\\lambda").
+
 ``` r
 # creating a dataframe to nicely use ggplot
+<<<<<<< HEAD
 prior_post <- bind_rows(posterior = posterior_samples, prior = prior_samples, .id = "type")
 
 # plot a histogram
@@ -417,6 +583,14 @@ ggplot(prior_post, aes(x = lambda, fill = type)) +
     geom_histogram(aes(y = ..density..), bins = 100, position = 'identity', alpha = 0.7) +
     labs(title = "Estimates of lambda",
          subtitle = "Comparison of prior and posterior samples")
+=======
+prior_results <- tibble(sample = "prior", value = prior_lambda$lambda)
+post_results <- tibble(sample = "posterior", value = posterior_samples)
+prior_post <- bind_rows(post_results, prior_results)
+# plot a histogram
+ggplot(prior_post, aes(x = value, y = stat(density), fill = sample)) +
+    geom_histogram(bins = 100, position = 'identity', alpha=0.7)
+>>>>>>> master
 ```
 
 ![](01c_elevator_repair_files/figure-gfm/plot-posterior-1.png)<!-- -->
@@ -425,17 +599,25 @@ The plot above shows how the model starts to converge on a smaller range
 of plausible values for
 ![\\lambda](https://latex.codecogs.com/png.latex?%5Clambda "\\lambda").
 Initially our prior was very wide but after fitting to the observed data
+<<<<<<< HEAD
 we start to get a better estimate.
 
 ### Estimate sumamry statistics from the posterior
 
 What is the average observed value of elevator failures in your
 building?
+=======
+we start to get a better
+estimate.
+
+### Find the mean and 90% credible interval of the average number of failures per year¶
+>>>>>>> master
 
 ``` r
 summarize(failures, mean(you))
 ```
 
+<<<<<<< HEAD
     ## # A tibble: 1 x 1
     ##   `mean(you)`
     ##         <dbl>
@@ -463,6 +645,19 @@ quantile(posterior_samples$lambda, c(0.05, 0.95))
 
     ##      5%     95% 
     ## 1.96934 4.40992
+=======
+    ## [1] 3.094464
+
+We can calculate the 5% and 95% quantiles with the `quantile()`
+function:
+
+``` r
+quantile(posterior_samples, c(0.05, 0.95))
+```
+
+    ##       5%      95% 
+    ## 1.974136 4.427865
+>>>>>>> master
 
 ### Challenge: use your model to make an actual decision
 
@@ -604,6 +799,7 @@ expect to pay elevator service.
 min_costs
 ```
 
+<<<<<<< HEAD
     ## [1] 4049.675 5101.800 4039.250 2983.900
 
 Using these values we can calculate the total the elevator service would
@@ -618,6 +814,19 @@ sum(min_costs)
 
 But what about if the individuals combined forces and bought the service
 together? How much would this cost?
+=======
+    ## $you
+    ## [1] 4056.425
+    ## 
+    ## $friend1
+    ## [1] 5100.6
+    ## 
+    ## $friend2
+    ## [1] 4050.575
+    ## 
+    ## $friend3
+    ## [1] 2943.85
+>>>>>>> master
 
 ``` r
 total_failures <- rowSums(failures)
@@ -646,8 +855,19 @@ shared_min_cost <- min(map_dbl(0:10, function(n) mean_cost(lambda_samples, n)))
 shared_min_cost
 ```
 
+<<<<<<< HEAD
     ## [1] 13159.23
 
 As we can see, it costs less to for the friends to pool their resources
 together. But would they actually do it? What would friend3 say about
 this arrangement?
+=======
+    ## [1] 13208.25
+
+``` r
+# Expected cost for independent service contracts
+sum(unlist(min_cost))
+```
+
+    ## [1] 16151.45
+>>>>>>> master

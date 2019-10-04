@@ -126,14 +126,17 @@ ggplot(prior_samples, aes(x = lambda)) +
     geom_histogram(aes(y = ..density..), bins = 100) +
     stat_function(fun = dgamma, args = list(shape = 2, rate = 0.5), color = "red") +
     labs(title = "Random samples match expected probability density",
-         subtitle = "Gamma distribution sampled with stan")
+         subtitle = "Gamma distribution sampled with stan",
+         x = expression(lambda),
+         y = expression(p(lambda)))
 ```
 
 We also generated fake $Y$ data with our model. These are known as prior-predictive samples. Its a good idea to check that the data generated from a prior makes sense.
 ```{r plot-prior-predictive}
 ggplot(prior_samples, aes(x = y_sim)) + 
     geom_bar(aes(y = ..prop..)) +
-    labs(x = "elevator malfunctions per year")
+    labs(x = "elevator malfunctions per year",
+         y = "prior predictive distribution")
 ```
 
 ### Building a full Stan Model
