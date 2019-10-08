@@ -13,26 +13,23 @@ they occur (and they *will* occur).
 2.  Define a model for a Bayesian polynomial regression
 3.  Implement Metropolis-Hastings from scratch, like your grandparents
     did
-
-<!-- end list -->
-
-  - We’ve provided basic derivations for all the quantities you’ll need
-    to compute
-  - We’ve laid out the functions you’ll need to write- each one
-    shouldn’t be more than 10 or so lines
-  - For each function, we’ve written a unit test you can run. It won’t
-    ensure your code is completely right, but it’ll make sure it’s at
-    least outputting the right types of things
-  - Critically evaluate your MH outputs to see if you can get a
+      - We’ve provided basic derivations for all the quantities you’ll
+        need to compute
+      - We’ve laid out the functions you’ll need to write- each one
+        shouldn’t be more than 10 or so lines
+      - For each function, we’ve written a unit test you can run. It
+        won’t ensure your code is completely right, but it’ll make
+        sure it’s at least outputting the right types of things
+4.  Critically evaluate your MH outputs to see if you can get a
     reasonable answer
 
 <!-- end list -->
 
 ``` r
 library(tidyverse)
-library(zeallot)
 library(praise)
 theme_set(theme_minimal())
+source('mcmc_R_test_functions.R')
 ```
 
 ## 1\. Synthetic Data
@@ -40,12 +37,12 @@ theme_set(theme_minimal())
 Lets generate some synthetic data that follows a polynomial curve. Our
 true curve follows this formula:
 
-\[y = x -0.5x^2 + 0.05x^3\]
+\(y = x-0.4x^2+0.05x^3\)
 
-We’ll also generate a noisy curve that has the same formula but with
-some additive noise:
+We’ll use the same formula but with some additive noise to generate
+noisy data:
 
-\[y_{noise} = y + \mathcal{N}(0, 0.1)\]
+\(y_{noise} = y + \mathcal{N}(0, 0.1)\)
 
 ``` r
 # cubic curve
@@ -53,7 +50,7 @@ coefs <- c(1, -0.4, 0.05)
 xvals <- seq(0, 5, length.out = 1000)
 yvals <- coefs[1]*xvals + coefs[2]*xvals^2 + coefs[3]*xvals^3
 
-# noisy cubic curve
+# noisy cubic curve data
 set.seed(1)
 n <- 100
 noise <- rnorm(n, 0, 0.1)
@@ -123,7 +120,7 @@ Start with some value for our parameters \(\theta_{0}\). Each iteration
 <!-- end list -->
 
   - If \(u \le \alpha\): **accept**; \(\theta_{t+1}=\theta^{'}\)
-  - If \(u \gt \alpha\): **reject**; \(\theta_{t+1}=\theta_{t}\)
+  - If \(u > \alpha\): **reject**; \(\theta_{t+1}=\theta_{t}\)
 
 ### 3.2 The plan
 
@@ -133,9 +130,10 @@ We’re drawing samples from a function
 
 So for the MH accept/reject decision we need to compute
 \(P(y|\theta)P(\theta)\) for each proposed value of our regression
-parameters \(\theta\). Since the MH acceptance depends on a ratio,
+parameters \(\theta\). Since the MH acceptance depends on a
+ratio,
 
-\(\alpha = \frac{P(y|\theta^{'})P(\theta^{'})}{P(y|\theta)P(\theta)}\)
+\(\displaystyle \alpha = \frac{P(y|\theta^{'})P(\theta^{'})}{P(y|\theta)P(\theta)}\)
 
 we can ignore any proportionality constants. It’s also generally useful,
 when computing with probabilities, to use logarithms so that we don’t
@@ -143,14 +141,14 @@ get rounding errors for values close to zero. So what we’ll actually
 compute (remembering that \(\log[a/b] = \log[a]-\log[b]\))
 is
 
-\(\log[\alpha] = \log[P(y|\theta^{'})P(\theta^{'})] - \log[P(y|\theta)P(\theta)]\)
+\(\displaystyle \log[\alpha] = \log[P(y|\theta^{'})P(\theta^{'})] - \log[P(y|\theta)P(\theta)]\)
 
 ### 3.3 Prior
 
 The prior is a normal
 distribution,
 
-\(P(\theta) = P(\theta_{1})P(\theta_{2})P(\theta_{3}) \propto \prod_{j=1}^{3}exp\left(-\frac{1}{2} \left(\frac{\theta_{j}}{\sigma_{j}}\right)^{2} \right)\)
+\(\displaystyle P(\theta) = P(\theta_{1})P(\theta_{2})P(\theta_{3}) \propto \prod_{j=1}^{3}exp\left(-\frac{1}{2} \left(\frac{\theta_{j}}{\sigma_{j}}\right)^{2} \right)\)
 
 where each \(\sigma_{j}\) is the prior hyperparameter for the \(j\)th
 parameter. By making any of the hyperparameters smaller, we can encode
@@ -158,7 +156,7 @@ prior knowledge that that parameter should be close to zero. Our
 unnormalized log probability
 is
 
-\(\log[P(\theta)] = -\sum_{j=1}^{3}\frac{1}{2} \left(\frac{\theta_{j}}{\sigma_{j}}\right)^{2}\)
+\(\displaystyle \log[P(\theta)] = -\sum_{j=1}^{3}\frac{1}{2} \left(\frac{\theta_{j}}{\sigma_{j}}\right)^{2}\)
 
 ### 3.4 Likelihood
 
@@ -167,20 +165,22 @@ define \(\hat{y}_{i}(\theta)\) to be the prediction for observation
 \(i\) and parameters \(\theta\), then (since we’ve set the variance to
 one)
 
-\(P(x|\theta) = \prod_{i=1}^{N}P(y_{i}|\theta) \propto \prod_{i}exp\left(-\frac{1}{2} (y_{i} - \hat{y}_{i}(\theta))^{2} \right)\)
+\(\displaystyle P(x|\theta) = \prod_{i=1}^{N}P(y_{i}|\theta) \propto \prod_{i}exp\left(-\frac{1}{2} (y_{i} - \hat{y}_{i}(\theta))^{2} \right)\)
 
 So the unnormallized log likelihood
 is
 
-\(\log[P(x|\theta)] = -\sum_{i=1}^{N} \frac{1}{2} (y_{i} - \hat{y}_{i}(\theta))^{2}\)
+\(\displaystyle \log[P(x|\theta)] = -\sum_{i=1}^{N} \frac{1}{2} (y_{i} - \hat{y}_{i}(\theta))^{2}\)
 
 ### 3.5 Putting it all together
 
 Every MH update, you’ll decide to accept or reject based on whether
-\(\log[u]\) is greater or less
-than
+\(\log[u]\) is greater or less than
+\(\log[\alpha]\)
 
-\(-\sum_{i=1}^{N} \frac{1}{2} (y_{i} - \hat{y}_{i}(\theta))^{2} -\sum_{j=1}^{3}\frac{1}{2} \left(\frac{\theta_{j}}{\sigma_{j}}\right)^{2}\)
+\(\displaystyle \log[\alpha] = \log[P(y|\theta^{'})P(\theta^{'})] - \log[P(y|\theta)P(\theta)] =\)
+
+\(\displaystyle \left[ -\sum_{i=1}^{N} \frac{1}{2} (y_{i} - \hat{y}_{i}(\theta^{'}))^{2} -\sum_{j=1}^{3}\frac{1}{2} \left(\frac{\theta^{'}_{j}}{\sigma_{j}}\right)^{2} \right] - \left[ -\sum_{i=1}^{N} \frac{1}{2} (y_{i} - \hat{y}_{i}(\theta))^{2} -\sum_{j=1}^{3}\frac{1}{2} \left(\frac{\theta_{j}}{\sigma_{j}}\right)^{2} \right]\)
 
 ### 3.6 Your mission
 
@@ -191,11 +191,11 @@ than
     `pred()` to compute the likelihood
   - write a function `metropolis_hastings_update()` that inputs a value
     of \(\theta\) and a jump distance, and returns three things:
-  - the next value of \(\theta\)
-  - the corresponding log-probability (which we’ll use to tune our
-    burn-in)
-  - a Boolean that’s `True` if this was an acceptance or `False` if it
-    was a rejection (which we’ll use to tune the jump distance)
+      - the next value of \(\theta\)
+      - the corresponding log-probability (which we’ll use to tune our
+        burn-in)
+      - a Boolean that’s `TRUE` if this was an acceptance or `FALSE` if
+        it was a rejection (which we’ll use to tune the jump distance)
 
 A couple things you may need:
 
@@ -216,9 +216,13 @@ If the test passes you will receive a nice message.
 #' Predict y-hat values
 #' @param theta vector of coefficients
 #' @return a vector of predicted y values
+
+# DELETE CODE FOR THE LAB
 pred <- function(theta) {
   theta[1]*x + theta[2]*x^2 + theta[3]*x^3
 }
+
+test_pred_correct_value()
 ```
 
     ## [1] "You are rad!"
@@ -235,6 +239,8 @@ after you are done to check that it passes.
 #' Compute Log probability
 #' @param theta vector of coefficients
 #' @return a single numeric value
+
+# DELETE CODE FOR THE LAB
 log_prob <- function(theta) {
   # our predicted y values
   yhat <- pred(theta)
@@ -248,9 +254,11 @@ log_prob <- function(theta) {
   # combined log probability
   likelihood + prior
 }
+
+test_log_prob()
 ```
 
-    ## [1] "You are extraordinary!"
+    ## [1] "You are best!"
 
 ### 4.3 MH Update
 
@@ -265,11 +273,13 @@ check that it passes.
 #' @param theta vector of coefficients
 #' @param jump_distance standard deviation of jump
 #' @return a list of 3 values: new value of theta, new log probability, and TRUE/FALSE if accepted
+
+# DELETE CODE FOR THE LAB
 mh_update <- function(theta, jump_distance) {
   # sample a candidate value near theta
   theta_new <- rnorm(length(theta), mean = theta, sd = jump_distance)
   
-  # compute log prob for new theta and old theta
+  # compute log prob for theta and theta prime
   lp <- log_prob(theta)
   lp_new <- log_prob(theta_new)
   
@@ -288,9 +298,11 @@ mh_update <- function(theta, jump_distance) {
     list(th = theta, p = lp, a = is_accept)
   }
 }
+
+test_mh_update()
 ```
 
-    ## [1] "You are flawless!"
+    ## [1] "You are groovy!"
 
 ## 5\. Wrap it up and put a bow on it
 
@@ -302,13 +314,12 @@ running MCMC:
   - manage and return the parameter values at every iteration, the log
     probability, and acceptance ratio
 
-<!-- end list -->
+Run the function `test_mh()` after you are done to check that it passes.
 
 ``` r
 #' Run Metropolis-Hastings Algorithm
 #' @param n number of iterations
 #' @param init initial values of theta
-#' @param theta vector of coefficients
 #' @param jump_distance standard deviation of jump
 #' @return a list with three values: matrix history of theta per iteration, history of log probs, average acceptance
 mh <- function(n = 1E4, init = c(0, 0, 0), jump_distance = 5E-3) {
@@ -323,7 +334,10 @@ mh <- function(n = 1E4, init = c(0, 0, 0), jump_distance = 5E-3) {
   # loop for n iterations
   for (i in seq_len(n)) {
     # run update
-    c(theta, lp, is_accept) %<-% mh_update(theta, jump_distance)
+    mh_update_output <- mh_update(c(0,0,0), 1E-3)
+    theta <- mh_update_output$th
+    lp <- mh_update_output$p
+    is_accept <- mh_update_output$a
     
     # save results
     theta_history[i,] <- theta
@@ -334,9 +348,11 @@ mh <- function(n = 1E4, init = c(0, 0, 0), jump_distance = 5E-3) {
   # return results
   list(th = theta_history, p = lp_history, a = accept_total/n)
 }
+
+test_mh()
 ```
 
-    ## [1] "You are fine!"
+    ## [1] "You are glorious!"
 
 ## 6\. Run inference and examine results
 
@@ -346,7 +362,10 @@ outputs of the sampler; try running under different configurations to
 see how good you can get your results\!
 
 ``` r
-c(thetas, probs, ar) %<-% mh(1E5, jump_distance = 1E-2)
+mh_output <- mh(1E5, jump_distance = 1E-2)
+thetas <- mh_output$th
+probs <- mh_output$p
+ar <- mh_output$a
 ```
 
 ### 6.1 Acceptance ratio
@@ -370,7 +389,7 @@ Probability 1997, Vol. 7, No. 1, 110-120).
 ar
 ```
 
-    ## [1] 0.27344
+    ## [1] 0.6448
 
 ### 6.2 Log-probability
 
