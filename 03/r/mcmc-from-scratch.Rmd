@@ -43,7 +43,7 @@ xvals <- seq(0, 5, length.out = 1000)
 yvals <- coefs[1]*xvals + coefs[2]*xvals^2 + coefs[3]*xvals^3
 
 # noisy cubic curve data
-set.seed(1)
+set.seed(1) # to keep consistent
 n <- 100
 noise <- rnorm(n, 0, 0.1)
 x <- runif(n, 0, 5)
@@ -247,6 +247,8 @@ Run the function `test_mh()` after you are done to check that it passes.
 #' @param theta vector of coefficients
 #' @param jump_distance standard deviation of jump
 #' @return a list with three values: matrix history of theta per iteration, history of log probs, average acceptance
+
+# DELETE CODE FOR THE LAB
 mh <- function(n = 1E4, init = c(0, 0, 0), jump_distance = 5E-3) {
   # manage values for every iteration
   theta_history <- matrix(0, nrow = n, ncol = length(init))
@@ -348,13 +350,17 @@ ggplot() +
 We can also look at the autocorrelation directly:
 
 ```{r correlegram-samples}
-# TODO: Implement correlegram
+acf(samples,lag.max=5000)
+acf(random_walk,lag.max=5000)
+
 ```
 
 Back to the outputs of our MCMC sampler- how do they look?
 
 ```{r  correlegram-mh}
-# TODO: Implement correlegram
+acf(thetas[,1],lag.max=50000)
+acf(thetas[,2],lag.max=50000)
+acf(thetas[,3],lag.max=50000)
 ```
 
 We have some options for how to address this:
@@ -421,16 +427,17 @@ thin <- 500
 iters <- seq(burnin, nrow(thetas), by = thin)
 iters <- iters[1:min(250, length(iters))]
 
+# setting up data of xvalues vs our posterior yvalues for the iterations specified above
+theta_iters <- data.frame(thetas[iters,])
+y_post <- data.frame(apply(theta_iters, 1, function(x) x[1]*xvals + x[2]* xvals^2 + x[3]*xvals^3))
+y_post <- gather(y_post, iter, yval)
+postdata <- data.frame(xvals,y_post)
+
 # base plot
 p <- ggplot() +
   geom_point(aes(x = x, y = y), color = "orange") +
   geom_line(aes(x = xvals, y = yvals), group = 0, color = "blue")
 
-# add samples (this seems to only be adding the last line)
-for (i in iters) {
-  y_post <- thetas[i,1]*xvals + thetas[i,2]*xvals^2 + thetas[i,3]*xvals^3
-  p <- p + geom_line(aes(x = xvals, y = y_post), group = i, alpha = 0.05, color = "red")
-}
-
-print(p)
+# add samples 
+p + geom_line(data=postdata, aes(x=xvals,y=yval,group=iter), alpha=0.05, color='red')
 ```
