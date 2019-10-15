@@ -41,11 +41,11 @@ The main reference is _A Student's Guide to Bayesian Statistics_ by Ben Lambert.
 4. Bayes rule is the only method to invert the probability of the data given a hypothesis that is consistent with the logic of probability.
 
 
-## Week 0, introductions
+## Week 0, introduction to probability
 
 ### Knowledge goals
 1. Intuition of reasoning under uncertainty.
-2. Basic definitions of all the pieces of inference.
+2. Basic probability definitions.
 
 ### Computational goals
 1. None
@@ -67,7 +67,21 @@ Chapters 2 and 3 of _Student's Guide_.
 5. Begin to develop understanding of how to summarize a posterior.
 6. Conduct inference and use results to inform a decision.
 
-## Week 2, While my sampler gently weeps
+## Week 2, Bayesian inference engine
+
+### Knowledge goals
+1. Become familiar with a Bayesian model: prior and likelihood.
+2. Experience applying the Bayesian inference engine to real data.
+3. Understand the process of encoding prior knowledge in a Bayesian model.
+4. Grasp how priors constrain a model and when that can be fatal.
+5. Understand the usefulness of prior predictive checks.
+
+### Computational goals
+1. Apply Bayesian inference engine to an actual dataset.
+2. Conduct prior predictive checks.
+
+
+## Week 3, While my sampler gently weeps
 
 ### Knowledge goals
 1. Understand why computation is an essential part of modern Bayesian inference.
@@ -79,43 +93,24 @@ Chapters 2 and 3 of _Student's Guide_.
 2. Visualize MCMC chains produced by a Stan model.
 3. Compute Rhat convergence statistics.
 
-## Week 3, Meet the family
+## Week 4, Posterior Predictive Checks
 
 ### Knowledge goals
-1. Understand the role of the likelihood in Bayesian inference.
-2. Become familiar with the most commonly used distributions.
-3. Awareness of the relationships among probability distributions.
-3. Develop strategy for choosing a likelihood.
+1. Experience creating and computing test statistics to check a model's fit.
+2. Knowledge of common model fit statistics: WAIC and LOO-CV.
+3. Awareness of graphical posterior predictive checks.
 
 ### Computational goals
-1. Run through the Bayesian estimation process under several likelihood scenarios.
-2. Reinforce understanding of MCMC diagnostics.
-3. Begin to assess model fit.
+1. Apply posterior predictive checks on a real dataset.
 
-## Week 4, Your priors are degenerate
+## Week 5, Introduction to Regression
 
 ### Knowledge goals
-1. Knowledge of the role and philosophies behind prior distributions.
-2. Understand the process of encoding prior knowledge in a Bayesian model.
-3. Grasp how priors constrain a model and when that can be fatal.
-4. Awareness of conjugate priors and why they can be a good place to start a modeling process.
-5. Importance of prior predictive checks.
+1. Understanding of regression in its various forms.
+2. Introduction to multilevel models.
 
 ### Computational goals
-1. Experiment with priors to understand how they affect model results.
-2. Use prior knowledge to inform a model when the amount of data is limited.
-3. Conduct prior predictive checks to inform prior selection.
-
-## Week 5, come together, right now, over me
-
-### Knowledge goals
-1. Understanding of the posterior in Bayesian modeling.
-2. Process of summarizing the posterior.
-3. Strategies for assessing model fit with posterior predictive checks.
-
-### Computational goals
-1. Implement common statistics for summarizing the posterior under several likelihood scenarios.
-2. Conduct posterior predictive checks under several likelihood scenarios.
+1. Estimate a regression model using the Bayesian inference engine.
 
 ## Week 6, we're on a whole other level
 
