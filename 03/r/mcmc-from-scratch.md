@@ -13,13 +13,19 @@ they occur (and they *will* occur).
 2.  Define a model for a Bayesian polynomial regression
 3.  Implement Metropolis-Hastings from scratch, like your grandparents
     did
-      - We’ve provided basic derivations for all the quantities you’ll
-        need to compute
-      - We’ve laid out the functions you’ll need to write- each one
-        shouldn’t be more than 10 or so lines
-      - For each function, we’ve written a unit test you can run. It
-        won’t ensure your code is completely right, but it’ll make
-        sure it’s at least outputting the right types of things
+
+<!-- end list -->
+
+  - We’ve provided basic derivations for all the quantities you’ll need
+    to compute
+  - We’ve laid out the functions you’ll need to write- each one
+    shouldn’t be more than 10 or so lines
+  - For each function, we’ve written a unit test you can run. It won’t
+    ensure your code is completely right, but it’ll make sure it’s at
+    least outputting the right types of things
+
+<!-- end list -->
+
 4.  Critically evaluate your MH outputs to see if you can get a
     reasonable answer
 
@@ -51,7 +57,7 @@ xvals <- seq(0, 5, length.out = 1000)
 yvals <- coefs[1]*xvals + coefs[2]*xvals^2 + coefs[3]*xvals^3
 
 # noisy cubic curve data
-set.seed(1)
+set.seed(1) # to keep consistent
 n <- 100
 noise <- rnorm(n, 0, 0.1)
 x <- runif(n, 0, 5)
@@ -105,6 +111,17 @@ hyperparams <- c(5, 5, 5)
 ## 3\. Coding up Metropolis-Hastings
 
 ### 3.1 Refresher: what does MH do?
+
+Markov Chain Monte Carlo (MCMC) is a stochastic process used to produce
+samples from an arbitrary probability distribution. Metropolis-Hasting
+(MH) is a specific MCMC algorithm/implementation. The goal of MH is to
+produce accurate samples of a parameter given a function that is
+proportional to its probability distribution. The most natural function
+we can provide that fits this criteria is the product of the likelihood
+and prior distributions. MH works by choosing a random value of
+\(\theta\), then choosing whether to jump to a new random value in the
+vicinity of the original value based on whether the likelihood\*prior is
+higher there (and some random chance).
 
 Start with some value for our parameters \(\theta_{0}\). Each iteration
 \(t\),
@@ -191,11 +208,11 @@ Every MH update, you’ll decide to accept or reject based on whether
     `pred()` to compute the likelihood
   - write a function `metropolis_hastings_update()` that inputs a value
     of \(\theta\) and a jump distance, and returns three things:
-      - the next value of \(\theta\)
-      - the corresponding log-probability (which we’ll use to tune our
-        burn-in)
-      - a Boolean that’s `TRUE` if this was an acceptance or `FALSE` if
-        it was a rejection (which we’ll use to tune the jump distance)
+  - the next value of \(\theta\)
+  - the corresponding log-probability (which we’ll use to tune our
+    burn-in)
+  - a Boolean that’s `TRUE` if this was an acceptance or `FALSE` if it
+    was a rejection (which we’ll use to tune the jump distance)
 
 A couple things you may need:
 
@@ -258,7 +275,7 @@ log_prob <- function(theta) {
 test_log_prob()
 ```
 
-    ## [1] "You are best!"
+    ## [1] "You are extraordinary!"
 
 ### 4.3 MH Update
 
@@ -279,7 +296,7 @@ mh_update <- function(theta, jump_distance) {
   # sample a candidate value near theta
   theta_new <- rnorm(length(theta), mean = theta, sd = jump_distance)
   
-  # compute log prob for theta and theta prime
+  # compute log prob for theta and new theta
   lp <- log_prob(theta)
   lp_new <- log_prob(theta_new)
   
@@ -291,7 +308,7 @@ mh_update <- function(theta, jump_distance) {
   
   # decide whether to accept or reject
   # and return collection of appropriate values
-  is_accept <- log(u) < log_alpha
+  is_accept <- log(u) <= log_alpha
   if (is_accept) {
     list(th = theta_new, p = lp_new, a = is_accept)
   } else {
@@ -302,7 +319,7 @@ mh_update <- function(theta, jump_distance) {
 test_mh_update()
 ```
 
-    ## [1] "You are groovy!"
+    ## [1] "You are flawless!"
 
 ## 5\. Wrap it up and put a bow on it
 
@@ -320,8 +337,11 @@ Run the function `test_mh()` after you are done to check that it passes.
 #' Run Metropolis-Hastings Algorithm
 #' @param n number of iterations
 #' @param init initial values of theta
+#' @param theta vector of coefficients
 #' @param jump_distance standard deviation of jump
 #' @return a list with three values: matrix history of theta per iteration, history of log probs, average acceptance
+
+# DELETE CODE FOR THE LAB
 mh <- function(n = 1E4, init = c(0, 0, 0), jump_distance = 5E-3) {
   # manage values for every iteration
   theta_history <- matrix(0, nrow = n, ncol = length(init))
@@ -334,7 +354,7 @@ mh <- function(n = 1E4, init = c(0, 0, 0), jump_distance = 5E-3) {
   # loop for n iterations
   for (i in seq_len(n)) {
     # run update
-    mh_update_output <- mh_update(c(0,0,0), 1E-3)
+    mh_update_output <- mh_update(theta, jump_distance)
     theta <- mh_update_output$th
     lp <- mh_update_output$p
     is_accept <- mh_update_output$a
@@ -352,7 +372,7 @@ mh <- function(n = 1E4, init = c(0, 0, 0), jump_distance = 5E-3) {
 test_mh()
 ```
 
-    ## [1] "You are glorious!"
+    ## [1] "You are fine!"
 
 ## 6\. Run inference and examine results
 
@@ -389,7 +409,7 @@ Probability 1997, Vol. 7, No. 1, 110-120).
 ar
 ```
 
-    ## [1] 0.6448
+    ## [1] 0.27344
 
 ### 6.2 Log-probability
 
@@ -454,17 +474,40 @@ ggplot() +
 
 ![](mcmc-from-scratch_files/figure-gfm/iid-vs-autocorrelated-2.png)<!-- -->
 
-We can also look at the autocorrelation directly:
+We can also look at the autocorrelation
+directly:
 
 ``` r
-# TODO: Implement correlegram
+acf(samples,lag.max=5000)
 ```
+
+![](mcmc-from-scratch_files/figure-gfm/correlegram-samples-1.png)<!-- -->
+
+``` r
+acf(random_walk,lag.max=5000)
+```
+
+![](mcmc-from-scratch_files/figure-gfm/correlegram-samples-2.png)<!-- -->
 
 Back to the outputs of our MCMC sampler- how do they look?
 
 ``` r
-# TODO: Implement correlegram
+acf(thetas[,1],lag.max=50000)
 ```
+
+![](mcmc-from-scratch_files/figure-gfm/correlegram-mh-1.png)<!-- -->
+
+``` r
+acf(thetas[,2],lag.max=50000)
+```
+
+![](mcmc-from-scratch_files/figure-gfm/correlegram-mh-2.png)<!-- -->
+
+``` r
+acf(thetas[,3],lag.max=50000)
+```
+
+![](mcmc-from-scratch_files/figure-gfm/correlegram-mh-3.png)<!-- -->
 
 We have some options for how to address this:
 
@@ -494,7 +537,10 @@ thin <- 10
 iters <- seq(burnin, nrow(thetas), by = thin)
 
 for (j in 1:3) {
-  p <- ggplot() + geom_line(aes(x = iters, y = thetas[iters,j]))
+  p <- ggplot() + 
+    geom_line(aes(x = iters, y = thetas[iters,j])) + 
+    #labs(y = str_c("theta_", j))
+    labs(y = bquote(theta[.(j)]))
   print(p)
 }
 ```
@@ -506,7 +552,9 @@ marginal posterior of each parameter:
 
 ``` r
 for (j in 1:3) {
-  p <- ggplot() + geom_histogram(aes(x = thetas[iters,j]), bins = 50)
+  p <- ggplot() + 
+    geom_histogram(aes(x = thetas[iters,j]), bins = 50) +
+    labs(x = bquote(theta[.(j)]))
   print(p)
 }
 ```
@@ -522,10 +570,10 @@ for (i in 1:3) {
   p <- ggplot() + 
     geom_point(aes(x = thetas[iters, i], y = thetas[iters, j]), alpha = 0.5) +
     labs(
-      title = sprintf("theta_%s vs theta_%s", j, i),
-      x = sprintf("theta_%s", i),
-      y = sprintf("theta_%s", j)
-      )
+      title = bquote(theta[.(j)]~"vs"~theta[.(i)]),
+      x = bquote(theta[.(i)]),
+      y = bquote(theta[.(j)])
+    )
   print(p)
 }
 ```
@@ -558,18 +606,23 @@ thin <- 500
 iters <- seq(burnin, nrow(thetas), by = thin)
 iters <- iters[1:min(250, length(iters))]
 
+# for each selected iteration, find the posterior predicted value for y (for each xval)
+y_posterior <- map(iters, function(i) {
+  y_post <- thetas[i,1]*xvals + thetas[i,2]*xvals^2 + thetas[i,3]*xvals^3
+  tibble(iteration = i, x = xvals, y_post = y_post)
+})
+
+# bind these iterations together
+y_posterior <- bind_rows(y_posterior)
+
 # base plot
 p <- ggplot() +
   geom_point(aes(x = x, y = y), color = "orange") +
   geom_line(aes(x = xvals, y = yvals), group = 0, color = "blue")
 
-# add samples (this seems to only be adding the last line)
-for (i in iters) {
-  y_post <- thetas[i,1]*xvals + thetas[i,2]*xvals^2 + thetas[i,3]*xvals^3
-  p <- p + geom_line(aes(x = xvals, y = y_post), group = i, alpha = 0.05, color = "red")
-}
-
-print(p)
+# add samples 
+p + geom_line(aes(x = x, y = y_post, group = factor(iteration)), 
+              data = y_posterior, alpha = 0.05, color='red')
 ```
 
 ![](mcmc-from-scratch_files/figure-gfm/plot-final-1.png)<!-- -->

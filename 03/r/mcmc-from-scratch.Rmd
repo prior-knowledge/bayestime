@@ -15,9 +15,9 @@ Gain a better understanding of what's going on under the hood in MCMC, so you'll
 1. Simulate some data from a polynomial with noise
 2. Define a model for a Bayesian polynomial regression
 3. Implement Metropolis-Hastings from scratch, like your grandparents did
-    - We've provided basic derivations for all the quantities you'll need to compute
-    - We've laid out the functions you'll need to write- each one shouldn't be more than 10 or so lines
-    - For each function, we've written a unit test you can run. It won't ensure your code is completely right, but it'll make sure it's at least outputting the right types of things
+- We've provided basic derivations for all the quantities you'll need to compute
+- We've laid out the functions you'll need to write- each one shouldn't be more than 10 or so lines
+- For each function, we've written a unit test you can run. It won't ensure your code is completely right, but it'll make sure it's at least outputting the right types of things
 4. Critically evaluate your MH outputs to see if you can get a reasonable answer
 
 ```{r load-libraries, message=FALSE}
@@ -85,6 +85,8 @@ hyperparams <- c(5, 5, 5)
 
 ### 3.1 Refresher: what does MH do?
 
+Markov Chain Monte Carlo (MCMC) is a stochastic process used to produce samples from an arbitrary probability distribution. Metropolis-Hasting (MH) is a specific MCMC algorithm/implementation. The goal of MH is to produce accurate samples of a parameter given a function that is proportional to its probability distribution. The most natural function we can provide that fits this criteria is the product of the likelihood and prior distributions. MH works by choosing a random value of $\theta$, then choosing whether to jump to a new random value in the vicinity of the original value based on whether the likelihood*prior is higher there (and some random chance).
+
 Start with some value for our parameters $\theta_{0}$. Each iteration $t$,
 
 1. Sample a **candidate value** $\theta^{'}$ near $\theta_{t}$
@@ -141,9 +143,9 @@ $\displaystyle \left[ -\sum_{i=1}^{N} \frac{1}{2} (y_{i} - \hat{y}_{i}(\theta^{'
 * write a function `pred()` that inputs a value of $\theta$ and returns predictions $\hat{y}_{i}(\theta)$ for all $i$
 * write a function `log_prob()` that inputs a value of $\theta$ and returns the unnormalized log probability. It will need to call `pred()` to compute the likelihood
 * write a function `metropolis_hastings_update()` that inputs a value of $\theta$ and a jump distance, and returns three things:
-    * the next value of $\theta$
-    * the corresponding log-probability (which we'll use to tune our burn-in)
-    * a Boolean that's `TRUE` if this was an acceptance or `FALSE` if it was a rejection (which we'll use to tune the jump distance)
+* the next value of $\theta$
+* the corresponding log-probability (which we'll use to tune our burn-in)
+* a Boolean that's `TRUE` if this was an acceptance or `FALSE` if it was a rejection (which we'll use to tune the jump distance)
 
 A couple things you may need:
 
@@ -383,7 +385,10 @@ thin <- 10
 iters <- seq(burnin, nrow(thetas), by = thin)
 
 for (j in 1:3) {
-  p <- ggplot() + geom_line(aes(x = iters, y = thetas[iters,j]))
+  p <- ggplot() + 
+    geom_line(aes(x = iters, y = thetas[iters,j])) + 
+    #labs(y = str_c("theta_", j))
+    labs(y = bquote(theta[.(j)]))
   print(p)
 }
 ```
@@ -392,7 +397,9 @@ Plotting a histogram of the sampled values will give a picture of the marginal p
 
 ```{r plot-histogram}
 for (j in 1:3) {
-  p <- ggplot() + geom_histogram(aes(x = thetas[iters,j]), bins = 50)
+  p <- ggplot() + 
+    geom_histogram(aes(x = thetas[iters,j]), bins = 50) +
+    labs(x = bquote(theta[.(j)]))
   print(p)
 }
 ```
@@ -405,10 +412,10 @@ for (i in 1:3) {
   p <- ggplot() + 
     geom_point(aes(x = thetas[iters, i], y = thetas[iters, j]), alpha = 0.5) +
     labs(
-      title = sprintf("theta_%s vs theta_%s", j, i),
-      x = sprintf("theta_%s", i),
-      y = sprintf("theta_%s", j)
-      )
+      title = bquote(theta[.(j)]~"vs"~theta[.(i)]),
+      x = bquote(theta[.(i)]),
+      y = bquote(theta[.(j)])
+    )
   print(p)
 }
 ```
@@ -427,11 +434,14 @@ thin <- 500
 iters <- seq(burnin, nrow(thetas), by = thin)
 iters <- iters[1:min(250, length(iters))]
 
-# setting up data of xvalues vs our posterior yvalues for the iterations specified above
-theta_iters <- data.frame(thetas[iters,])
-y_post <- data.frame(apply(theta_iters, 1, function(x) x[1]*xvals + x[2]* xvals^2 + x[3]*xvals^3))
-y_post <- gather(y_post, iter, yval)
-postdata <- data.frame(xvals,y_post)
+# for each selected iteration, find the posterior predicted value for y (for each xval)
+y_posterior <- map(iters, function(i) {
+  y_post <- thetas[i,1]*xvals + thetas[i,2]*xvals^2 + thetas[i,3]*xvals^3
+  tibble(iteration = i, x = xvals, y_post = y_post)
+})
+
+# bind these iterations together
+y_posterior <- bind_rows(y_posterior)
 
 # base plot
 p <- ggplot() +
@@ -439,5 +449,6 @@ p <- ggplot() +
   geom_line(aes(x = xvals, y = yvals), group = 0, color = "blue")
 
 # add samples 
-p + geom_line(data=postdata, aes(x=xvals,y=yval,group=iter), alpha=0.05, color='red')
+p + geom_line(aes(x = x, y = y_post, group = factor(iteration)), 
+              data = y_posterior, alpha = 0.05, color='red')
 ```
