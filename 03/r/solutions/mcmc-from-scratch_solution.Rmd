@@ -143,9 +143,9 @@ $\displaystyle \left[ -\sum_{i=1}^{N} \frac{1}{2} (y_{i} - \hat{y}_{i}(\theta^{'
 * write a function `pred()` that inputs a value of $\theta$ and returns predictions $\hat{y}_{i}(\theta)$ for all $i$
 * write a function `log_prob()` that inputs a value of $\theta$ and returns the unnormalized log probability. It will need to call `pred()` to compute the likelihood
 * write a function `metropolis_hastings_update()` that inputs a value of $\theta$ and a jump distance, and returns three things:
-    * the next value of $\theta$
-    * the corresponding log-probability (which we'll use to tune our burn-in)
-    * a Boolean that's `TRUE` if this was an acceptance or `FALSE` if it was a rejection (which we'll use to tune the jump distance)
+* the next value of $\theta$
+* the corresponding log-probability (which we'll use to tune our burn-in)
+* a Boolean that's `TRUE` if this was an acceptance or `FALSE` if it was a rejection (which we'll use to tune the jump distance)
 
 A couple things you may need:
 
@@ -162,12 +162,12 @@ Write the `pred()` function that accepts a vector of $\theta$ and returns a vect
 #' @param theta vector of coefficients
 #' @return a vector of predicted y values
 
+# DELETE CODE FOR THE LAB
 pred <- function(theta) {
-    # one line of code
-
+  theta[1]*x + theta[2]*x^2 + theta[3]*x^3
 }
 
-# test_pred_correct_value()
+test_pred_correct_value()
 ```
 
 ### 4.2 Predict Log Probability
@@ -178,15 +178,26 @@ Write the `log_prob()` function that accepts a vector of $\theta$ and returns th
 #' @param theta vector of coefficients
 #' @return a single numeric value
 
+# DELETE CODE FOR THE LAB
 log_prob <- function(theta) {
-    # can be done in 4 lines
+  # our predicted y values
+  yhat <- pred(theta)
+  
+  # likelihood
+  likelihood <- -0.5*sum((y - yhat)^2)
+  
+  # prior
+  prior <- -0.5*sum((theta/hyperparams)^2)
+  
+  # combined log probability
+  likelihood + prior
 }
 
-# test_log_prob()
+test_log_prob()
 ```
 
 ### 4.3 MH Update
-Write the `mh_update()` function that accepts a vector of $\theta$, a jump distance, and returns the next value of $\theta$, the corresponding log-probability, and a logical `TRUE` if this was an acceptance. It will need to call the `log_prob()` function to compute the log probabilities of the current and new $\theta s$. Run the function `test_mh_update()` after you are done to check that it passes.
+Write the `mh_update()` function that accepts a vector of $\theta$, a jump distance, and returns the next value of $\theta$, the corresponding log-probability, and a logical `TRUE` if this was an acceptance. Run the function `test_mh_update()` after you are done to check that it passes.
 
 ```{r user-mh-update}
 #' Metropolis-Hastings Step
@@ -194,12 +205,32 @@ Write the `mh_update()` function that accepts a vector of $\theta$, a jump dista
 #' @param jump_distance standard deviation of jump
 #' @return a list of 3 values: new value of theta, new log probability, and TRUE/FALSE if accepted
 
+# DELETE CODE FOR THE LAB
 mh_update <- function(theta, jump_distance) {
-    # can be done in about 10 lines of code
+  # sample a candidate value near theta
+  theta_new <- rnorm(length(theta), mean = theta, sd = jump_distance)
   
+  # compute log prob for theta and new theta
+  lp <- log_prob(theta)
+  lp_new <- log_prob(theta_new)
+  
+  # compute log acceptance ratio
+  log_alpha <- lp_new - lp
+  
+  # sample a random number on the unit interval
+  u <- runif(1)
+  
+  # decide whether to accept or reject
+  # and return collection of appropriate values
+  is_accept <- log(u) <= log_alpha
+  if (is_accept) {
+    list(th = theta_new, p = lp_new, a = is_accept)
+  } else {
+    list(th = theta, p = lp, a = is_accept)
+  }
 }
 
-# test_mh_update()
+test_mh_update()
 ```
 
 ## 5. Wrap it up and put a bow on it
@@ -219,20 +250,41 @@ Run the function `test_mh()` after you are done to check that it passes.
 #' @param jump_distance standard deviation of jump
 #' @return a list with three values: matrix history of theta per iteration, history of log probs, average acceptance
 
+# DELETE CODE FOR THE LAB
 mh <- function(n = 1E4, init = c(0, 0, 0), jump_distance = 5E-3) {
-    # can be done in about 15 lines of code
+  # manage values for every iteration
+  theta_history <- matrix(0, nrow = n, ncol = length(init))
+  lp_history <- vector("double", n)
+  accept_total <- 0L
+  
+  # intialize theta
+  theta <- init
+  
+  # loop for n iterations
+  for (i in seq_len(n)) {
+    # run update
+    mh_update_output <- mh_update(theta, jump_distance)
+    theta <- mh_update_output$th
+    lp <- mh_update_output$p
+    is_accept <- mh_update_output$a
+    
+    # save results
+    theta_history[i,] <- theta
+    lp_history[i] <- lp
+    accept_total <- accept_total + is_accept
+  }
+  
+  # return results
+  list(th = theta_history, p = lp_history, a = accept_total/n)
 }
 
-# test_mh()
+test_mh()
 ```
 
 ## 6. Run inference and examine results
-
-<span style="color:blue">**Once you complete the code exercises above, delete `eval=FALSE` from the rest of the code chunks**</span>
-
 You can use the rest of this lab to experiment with your very own bespoke MCMC sampler. Below are some steps we can take to interpret the outputs of the sampler; try running under different configurations to see how good you can get your results!
 
-```{r mh-run, eval = FALSE}
+```{r mh-run}
 mh_output <- mh(1E5, jump_distance = 1E-2)
 thetas <- mh_output$th
 probs <- mh_output$p
@@ -248,7 +300,7 @@ If `ar` is close to 1, it probably means we're taking steps that are too small a
 
 \**WEAK CONVERGENCE AND OPTIMAL SCALING OF RANDOM WALK METROPOLIS ALGORITHMS* by Roberts, Gelman and Gilks, The Annals of Applied Probability 1997, Vol. 7, No. 1, 110-120).
 
-```{r plot-ar, eval=FALSE}
+```{r plot-ar}
 ar
 ```
 
@@ -256,7 +308,7 @@ ar
 
 If we don't put much thought into initialization (and we didn't), the sampler might take a while to converge- the initial samples could be far from the actual posterior distribution. The log-probability can give us some insight into how many samples we should prune:
 
-```{r plot-lp, eval=FALSE}
+```{r plot-lp}
 iteration <- seq_along(probs)
 ggplot() + geom_line(aes(x = iteration, y = probs))
 ```
@@ -265,7 +317,7 @@ ggplot() + geom_line(aes(x = iteration, y = probs))
 
 It's always a good idea to plot the values of the different parameters "over time":
 
-```{r plot-params, eval=FALSE}
+```{r plot-params}
 m <- ncol(thetas)
 for (j in seq_len(m)) {
   p <- ggplot() +
@@ -282,7 +334,7 @@ Metropolis Hastings (if everything's working right) *asymptotically* converges t
 
 Let's compare a stationary distribution (IID draws from normal distribution) with an autocorrelated distribution (a Gaussian random walk):
 
-```{r iid-vs-autocorrelated, eval=FALSE}
+```{r iid-vs-autocorrelated}
 samples <- rnorm(1E4)
 random_walk <- cumsum(samples)
 
@@ -299,7 +351,7 @@ ggplot() +
 
 We can also look at the autocorrelation directly:
 
-```{r correlegram-samples, eval=FALSE}
+```{r correlegram-samples}
 acf(samples,lag.max=5000)
 acf(random_walk,lag.max=5000)
 
@@ -307,7 +359,7 @@ acf(random_walk,lag.max=5000)
 
 Back to the outputs of our MCMC sampler- how do they look?
 
-```{r  correlegram-mh, eval=FALSE}
+```{r  correlegram-mh}
 acf(thetas[,1],lag.max=50000)
 acf(thetas[,2],lag.max=50000)
 acf(thetas[,3],lag.max=50000)
@@ -327,7 +379,7 @@ We have some options for how to address this:
 
 ### 6.4 Burn-in and thinning:
 
-```{r plot-burnin, eval=FALSE}
+```{r plot-burnin}
 burnin <- 20000
 thin <- 10
 iters <- seq(burnin, nrow(thetas), by = thin)
@@ -343,7 +395,7 @@ for (j in 1:3) {
 
 Plotting a histogram of the sampled values will give a picture of the marginal posterior of each parameter:
 
-```{r plot-histogram, eval=FALSE}
+```{r plot-histogram}
 for (j in 1:3) {
   p <- ggplot() + 
     geom_histogram(aes(x = thetas[iters,j]), bins = 50) +
@@ -354,7 +406,7 @@ for (j in 1:3) {
 
 We can use a few scatter plots to visualize any correlations between the parameters:
 
-```{r plot-scatter, eval=FALSE}
+```{r plot-scatter}
 for (i in 1:3) {
   j <- (i %% 3) + 1
   p <- ggplot() + 
@@ -376,7 +428,7 @@ Notice that our implementation of MH didn't take these correlations into account
 
 How close we need our samples to being "truly stationary" will depend on the application- even with our current rough-around-the-edges Markov chain, we can check to see whether it's learning the basic structure of our data and faithfully representing uncertainty:
 
-```{r plot-final, eval=FALSE}
+```{r plot-final}
 burnin <- 20000
 thin <- 500
 iters <- seq(burnin, nrow(thetas), by = thin)
