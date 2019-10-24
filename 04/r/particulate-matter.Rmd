@@ -1,0 +1,385 @@
+---
+title: "Week 4: Visualization in Bayesian Workflows"
+output: 
+    html_document:
+        toc: true
+        toc_depth: 2
+        toc_float: true
+        mathjax: "default"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This notebook follows some of the examples in Visualization in Bayesian Workflow by Gabry, Simpson, Vehtari, Betancourt, and Gelman.
+
+Our goal for this problem is to estimate ground-station values of $PM_{2.5}$ (air concentrations of particulate matter of 2.5 microns or below), with uncertainty intervals, from satellite data. That is, we want to use a high-quality, reliable dataset that suffers from sparse and biased collection to calibrate a noisier dataset that we can collect anywhere. The plan:
+
+- Do some exploratory data analysis
+- Formulate a model
+- Evaluate how we've specified the model, before running inference, using samples from the prior predictive distribution
+- Run inference and inspect the MCMC results visually
+- Evaluate the model's performance using samples from the posterior predictive distribution
+- Define a more-complicated model and use these tools to compare them
+
+```{r load-libraries, message=FALSE}
+library(tidyverse)
+library(rstan)
+library(tidybayes)
+
+# plot themes
+theme_set(theme_minimal())
+
+# stan options
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+```
+
+## 1. Import Data
+```{r import-data}
+data <- read_csv(
+    "../../data/particulate_data.csv", 
+    locale = locale(encoding="iso-8859-1"),
+    col_types = "cccicddddc"
+)
+
+# add a column to track city id
+data <- data %>% mutate(city_id = row_number())
+
+# show data
+data
+```
+
+## 2. Exploratory Data Analyis
+Since we're relating two variables, expect a lot of scatter plots.
+
+Start with the logarithm of the ground-station measurements, plotted against the logarithm of the satellite measurements:
+
+```{r plot-ground-vs-satellite}
+ggplot(data, aes(x = log_sat, y = log_pm25)) +
+    geom_point() +
+    geom_smooth(method = "lm")
+```
+
+If you *squint*, the linear regression line seems like an OK(ish) place to start; the data definitely has an overall linear correlation. The focus of the rest of this notebook will be on the extent to which deviations from this linear relationship are going to mess us up.
+
+If we look closer, however, the errors don't seem to be totally random (e.g. they're not I.I.D. normal) - the data seems to have some structure to it, with some areas tending to have positive residuals and other areas negative. 
+
+We can visualize this easier by plotting the difference between `log_pm25` and `log_sat` on the y-axis instead of just `log_pm25` by itself:
+```{r plot-ground-vs-satellite-residuals}
+ggplot(data, aes(x = log_sat, y = log_pm25 - log_sat)) +
+    geom_point() +
+    geom_smooth(method = "lm") +
+    geom_hline(yintercept = 0, color = "red", linetype = "dashed")
+```
+
+If the errors were IID we would expect them to be normally distributed around 0 (the red dashed line). But there is clearly a non-random pattern here. Let's do some more exploration to see if we can (qualitatively) understand where this is coming from.
+
+One possibility is that different types of locations have different relationships between satellite and ground station data. We could do a quick check by breaking out the above plot by WHO super-regions:
+
+```{r plot-ground-vs-satellite-facet-region}
+ggplot(data, aes(x = log_sat, y = log_pm25, color = super_region_name)) +
+    geom_point(alpha = 0.3) +
+    geom_smooth(method = "lm", se = FALSE)
+```
+
+Notice that the different geographic areas only partially overlap, and regression lines fit to each show very different relationships. Gabry *et al* also tried grouping stations using hierarchical clustering (labeled `cluster_region` in the dataset):
+
+```{r plot-ground-vs-satellite-facet-cluster}
+ggplot(data, aes(x = log_sat, y = log_pm25, color = cluster_region)) +
+    geom_point(alpha = 0.3) +
+    geom_smooth(method = "lm", se = FALSE)
+```
+
+Just as in the super-region plot, we see very different dependences here. When we start modeling, we'll need to be on the lookout for biases in predictions on different types of locations.
+
+## 3. Baseline Model Prior
+To have something to benchmark against, let's start by fitting a Bayesian linear regression,
+
+$$
+y_i \sim N(\beta_0 + \beta_1x_i, \sigma^2)
+$$
+where $y_i$ is the ground station $PM_{2.5}$ measurement, $x_i$ is this satellite measurement, and $\beta_0$, $\beta_1$, and $\sigma$ are the parameters we need to infer. We'll use a normal distribution for priors on $\beta_0$ and $\beta_1$, and a half-normal for $\sigma$ (since it has to be positive).
+
+Before fitting anything, we should do a *keep yourself honest* check to see how well we've specified our model. Even without touching stan, it's easy to draw fake data from the prior predictive distribution:
+
+- draw samples $\beta_0^\prime$, $\beta_1^\prime$, and $\sigma^\prime$ for each of the parameters from their prior distribution
+- for each data point $x$, compute an estimate $y^\prime = \beta_0^\prime + \beta_1^\prime x + \epsilon\sigma^\prime)$ where $\epsilon \sim N(0,1)$
+
+Let's plot some of our prior predictive datasets alongside our actual data, starting with *weakly informative* priors:
+
+```{r weakly-informative-prior, comment=NA}
+prior_weak_file <- "../../stan/particulate_matter_ols_prior_weak.stan"
+cat(read_file(prior_weak_file))
+```
+
+Compile this stan model.
+```{r stan-compile-weak-priors}
+prior_weak_model <- stan_model(prior_weak_file)
+```
+
+Now let's sample from this model.
+```{r stan-sample-weak-priors}
+prior_data <- list(N = nrow(data), log_sat = data$log_sat)
+prior_weak_samples <- sampling(prior_weak_model, data = prior_data, iter = 300, chains = 1)
+```
+
+Extract the samples into a data frame using the **tidybayes** function `gather_draws()`. This produces some new columns that you may have not seen before:
+
+- `.chain` the chain number. Since we only ran one chain these will all be 1.
+- `.iteration` the iteration number within each chain.
+- `.draw` a unique number for each draw from the posterior. 
+- `city_id` the subscript for the variable (in this case for `log_pm_prior`). Since we are estimating 2980 observations this will vary from 1 to 2980.
+- `log_pm_prior` the variable name. 
+
+```{r prior-weak-extract-samples}
+log_pm_weak <- prior_weak_samples %>% 
+    spread_draws(log_pm_prior[city_id]) %>% 
+    ungroup()
+
+log_pm_weak
+```
+
+Let's take a look at 9 random draws from our estimates. We'll also add in the original data so we can compare against.
+```{r prior-weak-log-pm-comparison}
+log_pm_weak_comparison <- log_pm_weak %>% 
+    filter(.draw %in% sample(max(.draw), size = 9L)) %>% 
+    left_join(data %>% select(city_id, log_sat, log_pm25), by = "city_id") %>% 
+    select(.draw, city_id, log_sat, observed = log_pm25, sampled = log_pm_prior)
+
+log_pm_weak_comparison
+```
+
+Let's visualize these results to see if our prior distribution is producing feasible values for `log_pm25`.
+```{r plot-prior-weak-log-pm-comparison}
+log_pm_weak_comparison %>% 
+    gather("type", "log_pm_25", observed:sampled) %>% 
+    ggplot(aes(x = log_sat, y = log_pm_25, color = type)) +
+    geom_point(alpha = 0.3) + 
+    facet_wrap(~ .draw)
+```
+
+Some of these simulations include predictions orders of magnitude away from what we actually observe (remember we're working on log scales here!)! In some cases the slope also goes the wrong way - these priors generate data that's decidedly unphysical. This is bad for two reasons:
+
+- It means the prior doesn't *really* represent our prior knowledge, which defeats the entire conceptual point of this branch of statistics
+- More practically, it means that the data has to do more *work* than it should to constrain the prior. We'll tend to get posteriors that overestimate uncertainty and (if we do a really bad job specifying the prior) may be biased.
+
+So what should we be looking for? From *Gabry et al*,
+
+> What do we need in our priors? This suggests we need *containment*: priors that keep us inside sensible parts of the parameter space.
+
+So our priors should be broader than (and include) our data - but not be so broad that they make impossible predictions. Let's try again with our intercept constrained to be near zero, slope biased toward being a small poisitive number (since we already know the measurements are roughly correlated) and noise confined to near the unit scale:
+
+```{r informative-prior, comment=NA}
+prior_file <- "../../stan/particulate_matter_ols_prior.stan"
+cat(read_file(prior_file))
+```
+
+Compile this stan model.
+```{r stan-compile-priors}
+prior_model <- stan_model(prior_file)
+```
+
+Now let's sample from this model.
+```{r stan-sample-priors}
+prior_samples <- sampling(prior_model, data = prior_data, iter = 300, chains = 1)
+```
+
+```{r prior-extract-samples}
+log_pm_prior <- prior_samples %>% 
+    spread_draws(log_pm_prior[city_id]) %>% 
+    ungroup()
+
+log_pm_prior
+```
+
+Let's take a look at 9 random draws from our estimates. We'll also join in the original data (by `city_id`) so we can compare against.
+```{r prior-log-pm-comparison}
+log_pm_comparison <- log_pm_prior %>% 
+    filter(.draw %in% sample(max(.draw), size = 9L)) %>% 
+    left_join(data %>% select(city_id, log_sat, log_pm25), by = "city_id") %>% 
+    select(.draw, city_id, log_sat, observed = log_pm25, sampled = log_pm_prior)
+
+log_pm_comparison
+```
+
+Let's visualize these results to see if our prior distribution is producing feasible values for `log_pm25`.
+```{r plot-prior-log-pm-comparison}
+log_pm_comparison %>% 
+    gather("type", "log_pm_25", observed:sampled) %>% 
+    ggplot(aes(x = log_sat, y = log_pm_25, color = type)) +
+    geom_point(alpha = 0.3) + 
+    facet_wrap(~ .draw)
+```
+
+## 4. Baseline Model Inference
+Here's Gabry *et al's* code for the basic regression model:
+
+```{r regression-model, comment=NA}
+model_file <- "../../stan/particulate_matter_ols.stan"
+cat(read_file(model_file))
+```
+Compile this stan model.
+```{r stan-compile-regression}
+model <- stan_model(model_file)
+```
+
+Now let's sample from this model.
+```{r stan-sample-regression}
+model_data <- list(N = nrow(data), log_sat = data$log_sat, log_pm = data$log_pm25)
+model_samples <- sampling(model, data = model_data, iter = 1000, chains = 4)
+```
+
+And extract the draws for $\beta_0$, $\beta_1$, and $\sigma$.
+```{r model-extract-samples}
+coef_samples <- model_samples %>% 
+    spread_draws(beta0, beta1, sigma) %>% 
+    ungroup()
+
+coef_samples
+```
+
+### 4.1 Trace Plots
+Gabry's paper has some slick visualizations for investigating your MCMC run, that we'll talk about in the future when we discuss Hamiltonian Monte Carlo. For now, just do some quick trace plots to ensure nothing terrible happened:
+
+```{r plot-trace}
+coef_samples %>% 
+    gather("parameter", "value", beta0:sigma) %>% 
+    ggplot(aes(x = .draw, y = value)) +
+    geom_line() + 
+    facet_wrap(~parameter, ncol = 1, scales = "free_y")
+```
+
+Looks like we're mixing OK.
+
+Not surprisingly, the slope and intercept show some negative correlation:
+
+```{r plot-coef-variation}
+ggplot(coef_samples, aes(x = beta0, y = beta1)) + geom_hex() + scale_fill_viridis_c()
+ggplot(coef_samples, aes(x = beta0, y = sigma)) + geom_hex() + scale_fill_viridis_c()
+ggplot(coef_samples, aes(x = beta1, y = sigma)) + geom_hex() + scale_fill_viridis_c()
+```
+
+## 5. Baseline Model Posterior Predictive Checks
+Now that we've fit a model, we can draw data from the posterior predictive distribution $p(y^\prime|y)$. We can do a couple types of things with this fake data to get some intuition for how our model is doing:
+
+- Directly compare samples from the PPD with real data
+- Compute summary statistics on the PPD; compare range of values to the same statistic on the observed dataset.
+
+In either case we can break those checks out by subsets of the data (like WHO super region) to see if the model describes data equally well in different regions, or whether we'll tend to see geographic biases in any estimates we make from the model.
+
+Let's extract the posterior predictive distribution samples:
+
+```{r extract-ppd}
+log_pm_ppd <-  model_samples %>% 
+    spread_draws(log_pm_rep[city_id]) %>% 
+    ungroup() %>% 
+    select(-.chain, -.iteration)
+
+log_pm_ppd
+```
+
+### 5.1 Direct Comparisons
+Here's a flipbook of scatter plots, comparing PPD datasets with the real. Again we sample from 9 random draws.
+
+```{r ppd-flipbook-samples}
+log_pm_ppd9 <- log_pm_ppd %>%
+    filter(.draw %in% sample(max(.draw), size = 9L)) %>%
+    left_join(data %>% select(city_id, log_sat, log_pm25), by = "city_id") %>% 
+    select(.draw, city_id, log_sat, observed = log_pm25, sampled = log_pm_rep)
+
+log_pm_ppd9
+```
+
+```{r ppd-flipbook-plot}
+log_pm_ppd9 %>% 
+    gather("type", "log_pm25", observed:sampled) %>% 
+    ggplot(aes(x = log_sat, y = log_pm25, color = type)) +
+    geom_point(size = 0.5, alpha = 0.3) + 
+    facet_wrap(~ .draw)
+```
+
+While they certainly overlap, (as expected) there's some interesting structure in the real data that the PPD doesn't capture. Breaking out by super region exacerbates the differences:
+
+```{r ppd-flipbook-region-plot}
+log_pm_ppd9 %>%  
+    left_join(data %>% select(city_id, super_region_name), by = "city_id") %>% 
+    gather("type", "log_pm_25", observed:sampled) %>% 
+    ggplot(aes(x = log_sat, y = log_pm_25, color = type)) +
+    geom_point(alpha = 0.1, size = 0.1) + 
+    geom_smooth(method = "lm", se = FALSE) + 
+    facet_wrap(~ super_region_name)
+```
+
+If we compare the histogram of observed $PM_{2.5}$ values with samples from the PPD we see that the real data has some asymmetry that the synthetic data is missing:
+
+```{r histogram-ppd}
+log_pm_ppd9 %>% 
+    gather("type", "log_pm_25", observed:sampled) %>% 
+    ggplot(aes(x = log_pm_25, group = str_c(.draw, type))) +
+    geom_freqpoly(aes(color = type), bins = 20)
+```
+
+### 5.2 Comparison with Summary Statistics
+A danger with posterior predictive checking is that we're *double dipping* with our data - using it once to fit the model and a second time to check it. When we're comparing summary statistics, a poor choice of statistic could obscure a serious problem with the model.
+
+Consider, for example, a model where one parameter controls the mean of the posterior distribution. Comparing means of samples from the PPD will probably look good (because that parameter can learn the mean of your data easily) even if the shape of the fit is terrible. It's good practice, then, to select test statistics that aren't directly related to a single model parameter.
+
+In this case - since our histogram showed that the real data is much less symmetric than the posterior predictive distribution, let's use the skewness (a measure of distribution asymmetry):
+
+```{r skewness}
+skew <- function(x) {
+    mu <- mean(x)
+    numerator <- mean((x - mu)^3)
+    denominator <- mean((x - mu)^2)^(3/2)
+    numerator/denominator
+}
+
+observed_skewness <- skew(data$log_pm25)
+observed_skewness
+```
+
+```{r plot-skewness}
+log_pm_ppd %>% 
+    group_by(.draw) %>% 
+    summarize(sk = skew(log_pm_rep)) %>% 
+    ggplot(aes(x = sk)) + 
+    geom_histogram(bins = 30) +
+    geom_vline(xintercept = observed_skewness, linetype = "dashed")
+```
+
+Breaking out a statistic (let's try median this time) by WHO super region, we'll see that not only do the samples not resemble the observed data, but they're wrong in different directions for different regions! If we were answering questions that compared estimates for different geographical regions, this would be a first step to getting really dumb answers.
+
+```{r plot-region-median}
+ppd_median_by_region <- log_pm_ppd %>% 
+    left_join(data %>% select(city_id, super_region_name), by = "city_id") %>% 
+    group_by(super_region_name, .draw) %>% 
+    summarize(med = median(log_pm_rep)) %>% 
+    ungroup()
+
+data_median_by_region <- data %>% 
+    group_by(super_region_name) %>% 
+    summarize(med = median(log_pm25))
+
+ggplot() + 
+    geom_histogram(aes(x = med), data = ppd_median_by_region, bins = 30) +
+    geom_vline(aes(xintercept = med), linetype = "dashed", data = data_median_by_region) + 
+    facet_wrap(~ super_region_name)
+```
+
+## 6. The undiscovered country (Your Turn)
+**What's next?** By this point we should all agree that this problem deserves a model more nuanced than simple linear regression. Build a better model and run some of the same tests to see how it performs!
+
+- One option: run separate regressions for different regions or clusters
+- Another option, in between "one big stupid regression" and "a ton of independent regressions": build a hierarchical model that has separate parameters for each super region (or cluster), but treats those parameters as draws from a common distribution to be learned. This allows the different regions to use some information from each other while still preserving conditional independence. We'll do a lot more with hierarchical models later!
+
+Also: hierarchical model, ripped off from Gabry's Github:
+
+```{r hier-model, comment=NA}
+hier_file <- "../../stan/particulate_matter_multilevel.stan"
+cat(read_file(hier_file))
+```
+
+### 6.1 The lab
+Compile and sample values from the above hierarchical model. Perform the same posterior predictive checks we did for previous examples. Contrast the results to determine if this model is an improvement over the other ones.
