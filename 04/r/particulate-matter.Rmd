@@ -27,6 +27,7 @@ Our goal for this problem is to estimate ground-station values of $PM_{2.5}$ (ai
 library(tidyverse)
 library(rstan)
 library(tidybayes)
+library(knitr)
 
 # plot themes
 theme_set(theme_minimal())
@@ -49,6 +50,7 @@ data <- data %>% mutate(city_id = row_number())
 
 # show data
 data
+data[,8:11] # just to show the rest of the columns
 ```
 
 ## 2. Exploratory Data Analyis
@@ -81,7 +83,8 @@ One possibility is that different types of locations have different relationship
 ```{r plot-ground-vs-satellite-facet-region}
 ggplot(data, aes(x = log_sat, y = log_pm25, color = super_region_name)) +
     geom_point(alpha = 0.3) +
-    geom_smooth(method = "lm", se = FALSE)
+    geom_smooth(method = "lm", se = FALSE) + 
+    theme(legend.position="bottom")
 ```
 
 Notice that the different geographic areas only partially overlap, and regression lines fit to each show very different relationships. Gabry *et al* also tried grouping stations using hierarchical clustering (labeled `cluster_region` in the dataset):
@@ -89,7 +92,8 @@ Notice that the different geographic areas only partially overlap, and regressio
 ```{r plot-ground-vs-satellite-facet-cluster}
 ggplot(data, aes(x = log_sat, y = log_pm25, color = cluster_region)) +
     geom_point(alpha = 0.3) +
-    geom_smooth(method = "lm", se = FALSE)
+    geom_smooth(method = "lm", se = FALSE) + 
+    theme(legend.position="bottom")
 ```
 
 Just as in the super-region plot, we see very different dependences here. When we start modeling, we'll need to be on the lookout for biases in predictions on different types of locations.
@@ -115,7 +119,7 @@ cat(read_file(prior_weak_file))
 ```
 
 Compile this stan model.
-```{r stan-compile-weak-priors}
+```{r stan-compile-weak-priors, results="hide"}
 prior_weak_model <- stan_model(prior_weak_file)
 ```
 
@@ -140,6 +144,8 @@ log_pm_weak <- prior_weak_samples %>%
 
 log_pm_weak
 ```
+
+*Note the `r dim(log_pm_weak)[1]` rows is a result of the 2980 observations \* 1 chain \* 300/2 iterations (1/2 are lost to burn in)*
 
 Let's take a look at 9 random draws from our estimates. We'll also add in the original data so we can compare against.
 ```{r prior-weak-log-pm-comparison}
@@ -177,7 +183,7 @@ cat(read_file(prior_file))
 ```
 
 Compile this stan model.
-```{r stan-compile-priors}
+```{r stan-compile-priors, results="hide"}
 prior_model <- stan_model(prior_file)
 ```
 
@@ -221,7 +227,7 @@ model_file <- "../../stan/particulate_matter_ols.stan"
 cat(read_file(model_file))
 ```
 Compile this stan model.
-```{r stan-compile-regression}
+```{r stan-compile-regression, results="hide"}
 model <- stan_model(model_file)
 ```
 
